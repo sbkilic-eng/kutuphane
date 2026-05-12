@@ -135,13 +135,15 @@ select:focus{outline:none;border-color:var(--ac);}
 .scs{font-size:10px;color:var(--tl);margin-top:3px;}
 .stitle{font-family:'Georgia',serif;font-size:16px;color:var(--tx);margin-bottom:10px;margin-top:22px;padding-bottom:7px;border-bottom:1px solid var(--bd);}
 .bwrap{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:16px;}
-.bchart{display:flex;align-items:flex-end;gap:8px;height:130px;margin-bottom:6px;}
-.bitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:22px;}
-.bfill{width:100%;background:var(--ac2);border-radius:3px 3px 0 0;position:relative;min-height:2px;cursor:pointer;}
+.bchart{display:flex;align-items:flex-end;gap:8px;height:150px;margin-bottom:4px;}
+.bitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:28px;}
+.bcount{font-size:11px;font-weight:700;color:var(--ac);}
+.bfill{width:100%;background:var(--ac2);border-radius:4px 4px 0 0;position:relative;min-height:4px;cursor:pointer;transition:background .15s;}
 .bfill:hover,.bfill:active{background:var(--ac);}
-.btip{display:none;position:absolute;top:-26px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);font-size:9px;padding:2px 6px;border-radius:4px;white-space:nowrap;}
+.btip{display:none;position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);font-size:10px;padding:3px 8px;border-radius:5px;white-space:nowrap;z-index:10;}
 .bfill:hover .btip{display:block;}
-.blbl{font-size:9px;color:var(--td);}
+.blbl{font-size:9px;color:var(--td);text-align:center;}
+.bpages{font-size:9px;color:var(--tl);text-align:center;}
 .yt{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--bd);}
 .yt th{background:var(--sf2);padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:.5px;}
 .yt td{padding:8px 12px;font-size:12px;border-top:1px solid var(--bd);}
@@ -227,6 +229,7 @@ select:focus{outline:none;border-color:var(--ac);}
     <div class="ycs" id="ycs"></div>
     <div class="sgrid" id="sgrid"></div>
     <div class="stitle">Yıllara Göre Okuma</div>
+    <p style="font-size:12px;color:var(--td);margin-bottom:10px">Her çubuk o yıl okunan kitap sayısını gösterir. Üstündeki rakam kitap, altındaki ise toplam sayfa sayısıdır.</p>
     <div class="bwrap"><div class="bchart" id="bchart"></div></div>
     <div class="stitle" id="slistTitle">Okunanlar</div>
     <div id="slist"></div>
@@ -649,6 +652,10 @@ function injectManifest() {
 var books = [], editId = null, sortKey = 'title', sortDir = 1, statYear = 'all';
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function esc(s){ return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''; }
+// Türkçe karakterleri doğru küçülten fonksiyon (İ→i, I→ı vb.)
+function tr(s){
+  return String(s||'').replace(/İ/g,'i').replace(/I/g,'ı').replace(/Ğ/g,'ğ').replace(/Ü/g,'ü').replace(/Ş/g,'ş').replace(/Ö/g,'ö').replace(/Ç/g,'ç').toLocaleLowerCase('tr-TR');
+}
 function loadData(){
   var raw=null; try{raw=localStorage.getItem(SK);}catch(e){}
   if(raw){try{var p=JSON.parse(raw);if(Array.isArray(p)&&p.length>0){books=p;updateHeader();return;}}catch(e){}}
@@ -688,19 +695,19 @@ function fillYearFilter(){
 function heartStr(n){var s='';for(var i=1;i<=5;i++)s+='<span class="'+(i<=n?'h-on':'h-off')+'">♥</span>';return s;}
 function renderBooks(){
   fillYearFilter();
-  var q=document.getElementById('srch').value.toLowerCase();
+  var q=tr(document.getElementById('srch').value);
   var st=document.getElementById('fSt').value;
   var yr=document.getElementById('fYr').value;
   var list=books.filter(function(b){
-    if(q&&b.title.toLowerCase().indexOf(q)<0&&b.author.toLowerCase().indexOf(q)<0) return false;
+    if(q&&tr(b.title).indexOf(q)<0&&tr(b.author).indexOf(q)<0) return false;
     if(st&&b.status!==st) return false;
     if(yr&&b.year!=yr) return false;
     return true;
   });
   list.sort(function(a,b){
     var va,vb;
-    if(sortKey==='title'){va=a.title.toLowerCase();vb=b.title.toLowerCase();}
-    else if(sortKey==='author'){va=a.author.toLowerCase();vb=b.author.toLowerCase();}
+    if(sortKey==='title'){va=tr(a.title);vb=tr(b.title);}
+    else if(sortKey==='author'){va=tr(a.author);vb=tr(b.author);}
     else if(sortKey==='year'){va=a.year||0;vb=b.year||0;}
     else{va=a.pages||0;vb=b.pages||0;}
     return va<vb?-sortDir:va>vb?sortDir:0;
@@ -873,10 +880,24 @@ function renderStats(){
 function sc(l,v,s){return '<div class="sc"><div class="scl">'+l+'</div><div class="scv">'+v+'</div><div class="scs">'+s+'</div></div>';}
 function renderBar(yrs,rd){
   var el=document.getElementById('bchart');
-  if(!yrs.length){el.innerHTML='<span style="color:var(--td);font-size:12px">Yıl bilgisi olan kitap yok</span>';return;}
-  var data=yrs.map(function(y){return{y:y,c:rd.filter(function(b){return b.year==y;}).length};});
+  if(!yrs.length){el.innerHTML='<span style="color:var(--td);font-size:12px;padding:20px">Yıl bilgisi olan kitap yok</span>';return;}
+  var data=yrs.map(function(y){
+    var yb=rd.filter(function(b){return b.year==y;});
+    return{y:y, c:yb.length, p:yb.reduce(function(s,b){return s+(+b.pages||0);},0)};
+  });
   var mx=Math.max.apply(null,data.map(function(d){return d.c;}));
-  el.innerHTML=data.map(function(d){return'<div class="bitem"><div class="bfill" style="height:'+Math.max(Math.round(d.c/mx*100),2)+'%"><div class="btip">'+d.y+': '+d.c+' kitap</div></div><div class="blbl">'+d.y+'</div></div>';}).join('');
+  el.innerHTML=data.map(function(d){
+    var pct=Math.max(Math.round(d.c/mx*100),4);
+    var pgStr=d.p>=1000?(d.p/1000).toFixed(1)+'K':d.p+'s';
+    return '<div class="bitem">'
+      +'<div class="bcount">'+d.c+'</div>'
+      +'<div class="bfill" style="height:'+pct+'%">'
+        +'<div class="btip">'+d.y+': '+d.c+' kitap · '+d.p.toLocaleString('tr-TR')+' sayfa</div>'
+      +'</div>'
+      +'<div class="blbl">'+d.y+'</div>'
+      +'<div class="bpages">'+pgStr+'</div>'
+      +'</div>';
+  }).join('');
 }
 
 // ─── BACKUP ───────────────────────────────────────────────────────────────────
