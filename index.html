@@ -135,15 +135,15 @@ select:focus{outline:none;border-color:var(--ac);}
 .scs{font-size:10px;color:var(--tl);margin-top:3px;}
 .stitle{font-family:'Georgia',serif;font-size:16px;color:var(--tx);margin-bottom:10px;margin-top:22px;padding-bottom:7px;border-bottom:1px solid var(--bd);}
 .bwrap{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:16px;}
-.bchart{display:flex;align-items:flex-end;gap:8px;height:150px;margin-bottom:4px;}
-.bitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:28px;}
-.bcount{font-size:11px;font-weight:700;color:var(--ac);}
-.bfill{width:100%;background:var(--ac2);border-radius:4px 4px 0 0;position:relative;min-height:4px;cursor:pointer;transition:background .15s;}
-.bfill:hover,.bfill:active{background:var(--ac);}
-.btip{display:none;position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);font-size:10px;padding:3px 8px;border-radius:5px;white-space:nowrap;z-index:10;}
-.bfill:hover .btip{display:block;}
-.blbl{font-size:9px;color:var(--td);text-align:center;}
-.bpages{font-size:9px;color:var(--tl);text-align:center;}
+.bchart{display:flex;flex-direction:column;gap:10px;padding:4px 0;}
+.bitem{display:flex;flex-direction:column;gap:3px;}
+.bitem-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;}
+.bitem-year{font-weight:600;color:var(--tx);}
+.bitem-meta{color:var(--td);font-size:11px;}
+.btrack{background:var(--sf2);border-radius:6px;height:28px;position:relative;overflow:hidden;}
+.bbar{height:100%;background:linear-gradient(90deg,var(--ac2),var(--ac));border-radius:6px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;min-width:32px;transition:width .6s cubic-bezier(.34,1.1,.64,1);}
+.bbar-num{font-size:11px;font-weight:700;color:#fff;white-space:nowrap;}
+.bbar-num-out{position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;color:var(--ac);padding-right:8px;white-space:nowrap;}
 .yt{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--bd);}
 .yt th{background:var(--sf2);padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:.5px;}
 .yt td{padding:8px 12px;font-size:12px;border-top:1px solid var(--bd);}
@@ -376,171 +376,7 @@ select:focus{outline:none;border-color:var(--ac);}
 </div>
 
 <script>
-const D=[
-  {t:"Kitaplardan Korkan Çocuk",a:"Susanna Tamaro",p:41,s:"Okundu",y:2023,d:"07.11.2023"},
-  {t:"Kendini Aslan Sanan Şola",a:"Bernardo Atxaga",p:70,s:"Okundu",y:2023,d:"08.11.2023"},
-  {t:"Uzaya Giden Tren",a:"Mert Arık",p:62,s:"Okundu",y:2023,d:"09.11.2023"},
-  {t:"Şehirdeki Gizemli Sinyal - Faruk",a:"Caner Sarıoğlu",p:63,s:"Okundu",y:2023,d:"05.12.2023"},
-  {t:"Daha da Fazla Kumkurdu",a:"Asa Lind",p:110,s:"Okundu",y:2023,d:"06.12.2023"},
-  {t:"Daha Fazla Kumkurdu",a:"Asa Lind",p:103,s:"Okundu",y:2023,d:"06.12.2023"},
-  {t:"Kumkurdu",a:"Asa Lind",p:103,s:"Okundu",y:2023,d:"06.12.2023"},
-  {t:"Gün Bey'in Penceresi",a:"Göknil Özkök",p:32,s:"Okundu",y:2023,d:"14.12.2023"},
-  {t:"Anneanne Frieder İle Okul Yolunda",a:"Gudrun Mebs",p:52,s:"Okundu",y:2023,d:"15.12.2023"},
-  {t:"Çekilin Ben Yazarım",a:"Anıl Basılı",p:92,s:"Okundu",y:2023,d:"25.12.2023"},
-  {t:"Gözlük Takmak İstemiyorum",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"25.12.2023"},
-  {t:"Eski Şapka",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"25.12.2023"},
-  {t:"Doğum Günü",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"25.12.2023"},
-  {t:"Kayıp Para",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"25.12.2023"},
-  {t:"Üç Kardeş",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"26.12.2023"},
-  {t:"Dedemin Saati",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"26.12.2023"},
-  {t:"Oyunbozan",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"26.12.2023"},
-  {t:"Sır Kuşu",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"26.12.2023"},
-  {t:"Ninemin Ördüğü Atkı",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"26.12.2023"},
-  {t:"Unutulan Ödev",a:"Özgür Sinan",p:46,s:"Okundu",y:2023,d:"26.12.2023"},
-  {t:"Sınıftaki Gizemli Saat - Faruk",a:"Caner Sarıoğlu",p:64,s:"Okundu",y:2024,d:"21.01.2024"},
-  {t:"Atlarla Rüzgarı Yakalayalım",a:"Büşra Ümmühan",p:78,s:"Okundu",y:2024,d:"02.02.2024"},
-  {t:"Arkadaşlık Beklemez",a:"Lucile de Peslouän",p:103,s:"Okundu",y:2024,d:"05.02.2024"},
-  {t:"Nohut Adam",a:"Anıl Basılı",p:63,s:"Okundu",y:2024,d:"22.02.2024"},
-  {t:"Ayvayı Yedik Müzesi",a:"Mert Arık",p:64,s:"Okundu",y:2024,d:"27.02.2024"},
-  {t:"Yeni Öğretmen",a:"Dominique Demers",p:62,s:"Okundu",y:2024,d:"15.03.2024"},
-  {t:"Gizemli Kütüphaneci",a:"Dominique Demers",p:64,s:"Okundu",y:2024,d:"04.04.2024"},
-  {t:"Zürafa Peli ve Ben",a:"Roald Dahl",p:80,s:"Okundu",y:2024,d:"26.04.2024"},
-  {t:"Yavru Fok Nesu",a:"Mehmet Fırat Pürselim",p:46,s:"Okundu",y:2024,d:"07.05.2024"},
-  {t:"Benim Zürafam Uçabilir",a:"Mert Arık",p:62,s:"Okundu",y:2024,d:"09.05.2024"},
-  {t:"Kedi Gezegeni",a:"Büşra Tümkaya",p:62,s:"Okundu",y:2024,d:"21.05.2024"},
-  {t:"Uçan Ev",a:"Claude Roy",p:82,s:"Okundu",y:2024,d:"06.06.2024"},
-  {t:"Hayvanlar Toplantısı",a:"Erich Kastner",p:84,s:"Okundu",y:2024,d:"22.06.2024"},
-  {t:"Yaman Tilki",a:"Roald Dahl",p:100,s:"Okundu",y:2024,d:"30.06.2024"},
-  {t:"Pitircik'in Armağanları",a:"Goscinny Sempe",p:155,s:"Okundu",y:2024,d:"02.07.2024"},
-  {t:"Harry Potter ve Felsefe Tasi - 1",a:"J. K. Rowling",p:300,s:"Okundu",y:2024,d:"19.07.2024"},
-  {t:"Harry Potter ve Sirlar Odasi - 2",a:"J. K. Rowling",p:316,s:"Okundu",y:2024,d:"25.07.2024"},
-  {t:"Harry Potter ve Azkaban Tutsagi - 3",a:"J. K. Rowling",p:396,s:"Okundu",y:2024,d:"11.08.2024"},
-  {t:"Zipir Özgürlük Pesinde",a:"Dilek Yardımcı",p:72,s:"Okundu",y:2024,d:"15.08.2024"},
-  {t:"Alaaddin'in Geveze Su Boruları",a:"Behiç AK",p:75,s:"Okundu",y:2024,d:"20.08.2024"},
-  {t:"Valizdeki Kedi",a:"Göktuğ Canbaba",p:212,s:"Okundu",y:2024,d:"21.08.2024"},
-  {t:"Güneşi Bile Tamir Eden Adam",a:"Behiç AK",p:67,s:"Okundu",y:2024,d:"14.09.2024"},
-  {t:"Daga Tırmanan Kedi",a:"Mustafa Orakçı",p:62,s:"Okundu",y:2024,d:"14.09.2024"},
-  {t:"Göge Tırmanan Çocuk",a:"Ali Standish",p:84,s:"Okundu",y:2024,d:"14.09.2024"},
-  {t:"Dünyayı Aydınlatanlar - Tesla",a:"Tuna Duran",p:80,s:"Okundu",y:2024,d:"30.10.2024"},
-  {t:"Dünyanın En Önemli Öğrencisi",a:"Şermin Yaşar",p:156,s:"Okundu",y:2024,d:"07.11.2024"},
-  {t:"Selimin Renkli Dünyasi - Uçurtma Spor Kulübü",a:"Serpil Kaya",p:56,s:"Okundu",y:2024,d:"10.11.2024"},
-  {t:"Melodi",a:"Anıl Basılı",p:64,s:"Okundu",y:2024,d:"28.12.2024"},
-  {t:"Harry Potter ve Ates Kadehi - 4",a:"J. K. Rowling",p:660,s:"Okundu",y:2024,d:"31.12.2024"},
-  {t:"Hayvani Rekorlar Kitabi",a:"Katharina Vestre",p:null,s:"Okundu",y:2024,d:""},
-  {t:"Kurabiye Ev",a:"Refik Durbaş",p:48,s:"Okundu",y:2024,d:""},
-  {t:"Balino",a:"Anıl Basılı",p:60,s:"Okundu",y:2024,d:""},
-  {t:"Zaman Bisikleti",a:"Bilgin Adalı",p:112,s:"Okundu",y:2024,d:""},
-  {t:"Elleriyle Gören Çocuk",a:"Tomasz Malkowski",p:108,s:"Okundu",y:2024,d:""},
-  {t:"Selimin Renkli Dünyasi - Izci Kampi",a:"Serpil Kaya",p:60,s:"Okundu",y:2024,d:""},
-  {t:"Selimin Renkli Dünyasi - Incir Çekirdeğini Doldurmaz",a:"Serpil Kaya",p:61,s:"Okundu",y:2024,d:""},
-  {t:"Hizli Postaci",a:"Emine Delimehmet",p:64,s:"Okundu",y:2024,d:""},
-  {t:"Abartma Tozu",a:"Şermin Yaşar",p:159,s:"Okundu",y:2024,d:""},
-  {t:"Dedemin Bakkali",a:"Şermin Yaşar",p:200,s:"Okundu",y:2024,d:""},
-  {t:"Atatürk Hangi Takimi Tutuyordu",a:"Süleyman Bulut",p:71,s:"Okundu",y:2024,d:""},
-  {t:"Uçurtmam Bulut Şimdi",a:"Sevim AK",p:85,s:"Okundu",y:2024,d:""},
-  {t:"Mavi Esek Ile Aylak Aslan",a:"Yalvaç URAL",p:82,s:"Okundu",y:2024,d:""},
-  {t:"Karaca ve Yürüyen Köşk",a:"Ömür Kurt",p:83,s:"Okundu",y:2024,d:""},
-  {t:"Selimin Renkli Dünyasi - Kavanozdaki Iyilik",a:"Serpil Kaya",p:61,s:"Okundu",y:2024,d:""},
-  {t:"Varsay ki Yedim",a:"Emine Delimehmet",p:61,s:"Okundu",y:2024,d:""},
-  {t:"Cumhuriyetin Çocuklari",a:"Emine Delimehmet",p:61,s:"Okundu",y:2024,d:""},
-  {t:"Yeni Okul Heyecani",a:"Emine Delimehmet",p:61,s:"Okundu",y:2024,d:""},
-  {t:"Yengeç Yazar",a:"Koray Avcı Çakman",p:77,s:"Okundu",y:2025,d:"02.01.2025"},
-  {t:"Küçük Beyaz Ugur Böceği",a:"Ahmet Şerif Izgören",p:60,s:"Okundu",y:2025,d:"06.01.2025"},
-  {t:"Kendine Sarilmak Nasıldi",a:"Irem Oturaklıoğlu Kaya",p:63,s:"Okundu",y:2025,d:"09.01.2025"},
-  {t:"Duygu Günlügüm - Mira Stres Kulübesinden Ayrılıyor",a:"Oya Doğan",p:48,s:"Okundu",y:2025,d:"12.01.2025"},
-  {t:"Istiklal Marsı'nın Doguşu",a:"Emine Delimehmet",p:61,s:"Okundu",y:2025,d:"17.01.2025"},
-  {t:"Selimin Renkli Dünyasi - Kampta Oyun Var",a:"Serpil Kaya",p:63,s:"Okundu",y:2025,d:"21.01.2025"},
-  {t:"Küçük Astronomlar 3 - Güneşin Arkadaşlari",a:"Nurdan Bağrıaçık",p:85,s:"Okundu",y:2025,d:"21.01.2025"},
-  {t:"Mia ve Bazi Şekerli Şeyler",a:"Birsen Ekim Özen",p:112,s:"Okundu",y:2025,d:"27.01.2025"},
-  {t:"Küçük Prens",a:"Antoine De Saint-Exupery",p:119,s:"Okundu",y:2025,d:"27.01.2025"},
-  {t:"Gemici Dedem",a:"Sevim AK",p:83,s:"Okundu",y:2025,d:"28.01.2025"},
-  {t:"Harper Ile Kırmızı Şemsiye",a:"Gerrie Burnell",p:122,s:"Okundu",y:2025,d:"28.01.2025"},
-  {t:"Dilek Kütüphanesi - Mayista Kar Yagisi",a:"Christine Evans",p:87,s:"Okundu",y:2025,d:"28.01.2025"},
-  {t:"Uzayin Sirri - Kara Delik",a:"Ilkay Marangoz",p:115,s:"Okundu",y:2025,d:"31.01.2025"},
-  {t:"Gizemli Tepe",a:"Emine Delimehmet",p:61,s:"Okundu",y:2025,d:"20.02.2025"},
-  {t:"Simli Kalem",a:"Emine Delimehmet",p:61,s:"Okundu",y:2025,d:"20.02.2025"},
-  {t:"Naneyi Yedik Lokantasi",a:"Mert Arık",p:63,s:"Okundu",y:2025,d:"20.03.2025"},
-  {t:"Hapi Yuttuk Eczanesi",a:"Mert Arık",p:63,s:"Okundu",y:2025,d:"29.03.2025"},
-  {t:"Ay'a Ziplayan Kedi",a:"Aşkın Güngör",p:112,s:"Okundu",y:2025,d:"14.04.2025"},
-  {t:"Selimin Renkli Dünyasi - Hem Kirpili Hem Empatili",a:"Serpil Kaya",p:60,s:"Okundu",y:2025,d:"13.05.2025"},
-  {t:"Şövalye Ile Ejderha",a:"Sevde Tuba Okçu",p:89,s:"Okundu",y:2025,d:"17.07.2025"},
-  {t:"Berberdeki Papagan",a:"Behiç Ak",p:175,s:"Okundu",y:2025,d:"10.07.2025"},
-  {t:"Filozof Meşe",a:"Anooshirvan Miandji",p:58,s:"Okundu",y:2025,d:"19.07.2025"},
-  {t:"Balonla Bes Hafta",a:"Jules Verne",p:234,s:"Okundu",y:2025,d:"21.07.2025"},
-  {t:"Louis Braille",a:"Margaret Davidson",p:73,s:"Okundu",y:2025,d:"26.07.2025"},
-  {t:"Trafik Hayattir",a:"Emine Delimehmet",p:61,s:"Okundu",y:2025,d:"27.07.2025"},
-  {t:"Selimin Renkli Dünyasi - Hayal Perdesi",a:"Serpil Kaya",p:62,s:"Okundu",y:2025,d:"28.07.2025"},
-  {t:"Tüneldeki Işık",a:"Emine Delimehmet",p:61,s:"Okundu",y:2025,d:"28.07.2025"},
-  {t:"Şişkolarla Sıskalar",a:"Andre Maurois",p:102,s:"Okundu",y:2025,d:"29.07.2025"},
-  {t:"Ejderhanı Nasıl Egitirsin - 1",a:"Cresida Cowell",p:204,s:"Okundu",y:2025,d:"31.07.2025"},
-  {t:"Ejderhanı Nasıl Egitirsin - 2 Nasıl Korsan Olunur",a:"Cresida Cowell",p:198,s:"Okundu",y:2025,d:"02.08.2025"},
-  {t:"Ejderhanı Nasıl Egitirsin - 3 Ejderhaca Nasıl Konuşulur",a:"Cresida Cowell",p:236,s:"Okundu",y:2025,d:"15.08.2025"},
-  {t:"Ejderhanı Nasıl Egitirsin - 4 Ejderha Laneti Nasıl Bozulur",a:"Cresida Cowell",p:239,s:"Okundu",y:2025,d:"25.08.2025"},
-  {t:"Ejderhanı Nasıl Egitirsin - 5 Ejderha Kuyruklu Yalan Nasıl Uydurulur",a:"Cresida Cowell",p:244,s:"Okundu",y:2025,d:"27.08.2025"},
-  {t:"Ejderhanı Nasıl Egitirsin - 6 Ölümcül Ejderhalat Rehberi",a:"Cresida Cowell",p:233,s:"Okundu",y:2025,d:"06.09.2025"},
-  {t:"Bir Şeftali Bin Şeftali",a:"Samed Behrengi",p:62,s:"Okundu",y:2025,d:"21.09.2025"},
-  {t:"Ejderhanı Nasıl Egitirsin - 7 Ejderha Firtinasini Nasıl Atlatirsin",a:"Cresida Cowell",p:268,s:"Okundu",y:2025,d:""},
-  {t:"Babam Bir Çaliya Dönüştügünde",a:"Joke Van Leeuwen",p:114,s:"Okundu",y:2025,d:"05.10.2025"},
-  {t:"Charlie'nin Çikolata Fabrikasi",a:"Roald Dahl",p:208,s:"Okundu",y:2025,d:"06.10.2025"},
-  {t:"Kara Köpek Tango'nun Maceralari",a:"Binnur Denizci Miniç",p:180,s:"Okundu",y:2025,d:"06.10.2025"},
-  {t:"Haylaz Kuzey",a:"Imren Tübcil",p:128,s:"Okundu",y:2025,d:"08.10.2025"},
-  {t:"Ejderhanı Nasıl Egitirsin - 8 Bir Ejderhanin Kalbi Nasıl Kirilir",a:"Cresida Cowell",p:312,s:"Okundu",y:2025,d:"13.10.2025"},
-  {t:"Karanlikta Yanan Kivilcim",a:"Elle Mcnicoll",p:189,s:"Okundu",y:2025,d:"21.10.2025"},
-  {t:"Büyük Atatürk'ten Küçük Öyküler 1",a:"Süleyman Bulut",p:182,s:"Okundu",y:2025,d:"31.10.2025"},
-  {t:"Dünyanın Merkezine Yolculuk",a:"Jules Verne",p:63,s:"Okundu",y:2025,d:"18.12.2025"},
-  {t:"Harry Potter ve Zümrüdüanka Yoldaşligi - 5",a:"J. K. Rowling",p:975,s:"Okundu",y:2025,d:"27.12.2025"},
-  {t:"Benim Babam Bir Kahraman",a:"Mustafa Yogurtçu",p:51,s:"Okundu",y:2025,d:"25.12.2025"},
-  {t:"Bir Tür Kivilcim",a:"Elle Mcnicoll",p:208,s:"Okundu",y:2025,d:"30.12.2025"},
-  {t:"Çantamdan Fil Çikti",a:"Mert Arık",p:64,s:"Okundu",y:2025,d:"30.01.2025"},
-  {t:"Dilek Kütüphanesi - Yeni Okul Müdürü",a:"Christine Evans",p:87,s:"Okundu",y:2025,d:""},
-  {t:"Duygu Günlügüm - Mira Öfke Gezegeninden Ayrılıyor",a:"Oya Doğan",p:63,s:"Okundu",y:2025,d:""},
-  {t:"Duygu Günlügüm - Mira ve Yekta Zorbalık Adasinda Mücadele",a:"Oya Doğan",p:57,s:"Okundu",y:2025,d:""},
-  {t:"Duygu Günlügüm - Mira ve Yekta Sabir Tünelinde",a:"Oya Doğan",p:48,s:"Okundu",y:2025,d:""},
-  {t:"Uçurtma Avcilari",a:"Linda Sue Park",p:142,s:"Okundu",y:2025,d:""},
-  {t:"Selimin Renkli Dünyasi - Kelime Günlügü",a:"Serpil Kaya",p:56,s:"Okundu",y:2025,d:""},
-  {t:"Selimin Renkli Dünyasi - Fil Mil Karga Marga Ceviz Meviz",a:"Serpil Kaya",p:61,s:"Okundu",y:2025,d:""},
-  {t:"Selimin Renkli Dünyasi - Kimler Gelmiş",a:"Serpil Kaya",p:62,s:"Okundu",y:2025,d:""},
-  {t:"Agaç Sevgisi",a:"Emine Delimehmet",p:61,s:"Okundu",y:2025,d:""},
-  {t:"Azimle Gelen Zafer",a:"Emine Delimehmet",p:61,s:"Okundu",y:2025,d:""},
-  {t:"Uçan Balonlar",a:"Emine Delimehmet",p:61,s:"Okundu",y:2025,d:""},
-  {t:"Arkadaslik Çok Karişik",a:"Şeniz Baş - Pınar Akseki",p:157,s:"Okundu",y:2025,d:""},
-  {t:"Anne Terliği",a:"Anıl Basılı",p:128,s:"Okundu",y:2025,d:""},
-  {t:"Görünmez Uli",a:"Astrid Frank",p:96,s:"Okundu",y:2025,d:""},
-  {t:"Uçmak Isteyen Kedi",a:"Jose Canas Torregrosa",p:79,s:"Okundu",y:2025,d:""},
-  {t:"Aceleci Ayıcık Babu",a:"Valentina Rizzi",p:59,s:"Okundu",y:2025,d:""},
-  {t:"Faruk - Uzaydaki Gizemli Robot",a:"Caner Sarıoğlu",p:64,s:"Okundu",y:2025,d:""},
-  {t:"Balik Bögürtlen ve Karanliklar Canavari",a:"Burcu Bahar",p:48,s:"Okundu",y:2025,d:""},
-  {t:"The Little Prince",a:"Antoine De Saint-Exupery",p:71,s:"Okundu",y:2025,d:""},
-  {t:"Baby Isabelle",a:"Sharon Hurst",p:64,s:"Okundu",y:2025,d:""},
-  {t:"Uzayda Sahibini Arayan Köpek",a:"Göktuğ Canbaba",p:164,s:"Okundu",y:2026,d:"10.01.2026"},
-  {t:"Linç Çikmazi",a:"Anıl Basılı",p:190,s:"Okundu",y:2026,d:"20.01.2026"},
-  {t:"Basarisizlar Kulübü",a:"Anıl Basılı",p:155,s:"Okundu",y:2026,d:"15.02.2026"},
-  {t:"80 Günde Devri Alem",a:"Jules Verne",p:216,s:"Okundu",y:2026,d:"06.03.2026"},
-  {t:"Son Ayi",a:"Hannah Gold",p:204,s:"Okundu",y:2026,d:"15.03.2026"},
-  {t:"Cani Sikilan Zürafa Mektup Yaziyor",a:"Megumi Iwasa",p:104,s:"Okundu",y:2026,d:"16.03.2026"},
-  {t:"Kardan Kedi",a:"Linda Newberry",p:76,s:"Okundu",y:2026,d:"27.03.2026"},
-  {t:"Öğretmen Neden Çildirladi",a:"Mavisel Yener",p:72,s:"Okundu",y:2026,d:"30.03.2026"},
-  {t:"Muhteşem Maksimus",a:"Kiki Thorpe",p:116,s:"Okundu",y:2026,d:"04.04.2026"},
-  {t:"Benim Adim Şey",a:"Ece Erdoğuş Levi",p:112,s:"Okundu",y:2026,d:"07.04.2026"},
-  {t:"Agaçkakanlar",a:"Cahit Zarifoğlu",p:111,s:"Okunacak",y:null,d:""},
-  {t:"Bir Öykü Yazalim mi",a:"Cemil Kavukçu",p:96,s:"Okunacak",y:null,d:""},
-  {t:"Dostluklar Sirlar ve Kediler",a:"Anna Branforrd",p:128,s:"Okunacak",y:null,d:""},
-  {t:"Dünyanın Ucundaki Fener",a:"Jules Verne",p:232,s:"Okunacak",y:null,d:""},
-  {t:"Finansal Okuyazarlik 3. Sinif",a:"Kolektif",p:null,s:"Okunacak",y:null,d:""},
-  {t:"Harflere Ne Oldu",a:"Sezer ÜN",p:144,s:"Okunacak",y:null,d:""},
-  {t:"Harry Potter ve Melez Prens - 6",a:"J. K. Rowling",p:594,s:"Okunacak",y:null,d:""},
-  {t:"Harry Potter ve Ölüm Yadigarlari - 7",a:"J. K. Rowling",p:690,s:"Okunacak",y:null,d:""},
-  {t:"Hikaye Satan Tavşan",a:"Hamza Çelikel",p:124,s:"Okunacak",y:null,d:""},
-  {t:"Hobbit",a:"J.R.R. Tolkien",p:367,s:"Okunacak",y:null,d:""},
-  {t:"How To Train Your Dragon - 9 How To Steal A Dragon Sword",a:"Cresida Cowell",p:368,s:"Okunacak",y:null,d:""},
-  {t:"How To Train Your Dragon - 10 How to Seize a Dragon's Jewel",a:"Cresida Cowell",p:416,s:"Okunacak",y:null,d:""},
-  {t:"How To Train Your Dragon - 11 How to Betray a Dragon's Hero",a:"Cresida Cowell",p:416,s:"Okunacak",y:null,d:""},
-  {t:"How To Train Your Dragon - 12 How to Fight a Dragon's Fury",a:"Cresida Cowell",p:496,s:"Okunacak",y:null,d:""},
-  {t:"Magarada Tek Basina",a:"Nehir Aydın Gökduman",p:191,s:"Okunacak",y:null,d:""},
-  {t:"Penguenler Flüt Çalamaz",a:"Sevim AK",p:86,s:"Okunacak",y:null,d:""},
-  {t:"Robonlar Bir Kaçış Operasyonu",a:"Mert Arık",p:111,s:"Okunacak",y:null,d:""},
-  {t:"Sadako Ve Kagittan Bir Turna Kuşu",a:"Eleanor Coerr",p:92,s:"Okunacak",y:null,d:""}
-];
+const D=[];
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
 var SK = 'ktp_v1', SSK = 'ktp_settings_v1';
@@ -880,22 +716,27 @@ function renderStats(){
 function sc(l,v,s){return '<div class="sc"><div class="scl">'+l+'</div><div class="scv">'+v+'</div><div class="scs">'+s+'</div></div>';}
 function renderBar(yrs,rd){
   var el=document.getElementById('bchart');
-  if(!yrs.length){el.innerHTML='<span style="color:var(--td);font-size:12px;padding:20px">Yıl bilgisi olan kitap yok</span>';return;}
+  if(!yrs.length){el.innerHTML='<p style="color:var(--td);font-size:12px;padding:10px 0">Yıl bilgisi olan okunan kitap yok.</p>';return;}
   var data=yrs.map(function(y){
     var yb=rd.filter(function(b){return b.year==y;});
-    return{y:y, c:yb.length, p:yb.reduce(function(s,b){return s+(+b.pages||0);},0)};
-  });
+    return{y:y,c:yb.length,p:yb.reduce(function(s,b){return s+(+b.pages||0);},0)};
+  }).sort(function(a,b){return b.y-a.y;}); // en yeni yıl üstte
   var mx=Math.max.apply(null,data.map(function(d){return d.c;}));
   el.innerHTML=data.map(function(d){
-    var pct=Math.max(Math.round(d.c/mx*100),4);
-    var pgStr=d.p>=1000?(d.p/1000).toFixed(1)+'K':d.p+'s';
+    var pct=Math.round(d.c/mx*100);
+    var pgStr=d.p.toLocaleString('tr-TR')+' sayfa';
+    var labelInside=pct>30; // geniş barda sayıyı içine yaz
     return '<div class="bitem">'
-      +'<div class="bcount">'+d.c+'</div>'
-      +'<div class="bfill" style="height:'+pct+'%">'
-        +'<div class="btip">'+d.y+': '+d.c+' kitap · '+d.p.toLocaleString('tr-TR')+' sayfa</div>'
+      +'<div class="bitem-head">'
+        +'<span class="bitem-year">'+d.y+'</span>'
+        +'<span class="bitem-meta">'+d.c+' kitap &nbsp;·&nbsp; '+pgStr+'</span>'
       +'</div>'
-      +'<div class="blbl">'+d.y+'</div>'
-      +'<div class="bpages">'+pgStr+'</div>'
+      +'<div class="btrack">'
+        +'<div class="bbar" style="width:'+Math.max(pct,4)+'%">'
+          +(labelInside?'<span class="bbar-num">'+d.c+' kitap</span>':'')
+        +'</div>'
+        +(!labelInside?'<span class="bbar-num-out">'+d.c+'</span>':'')
+      +'</div>'
       +'</div>';
   }).join('');
 }
