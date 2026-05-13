@@ -210,6 +210,7 @@ select:focus{outline:none;border-color:var(--ac);}
 .bsec p,.setsec p{font-size:12px;color:var(--td);line-height:1.6;margin-bottom:11px;}
 .flbl{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:10px;border:1px dashed var(--bd);background:var(--sf);color:var(--td);cursor:pointer;font-size:12px;font-family:inherit;}
 #fileInput{display:none;}
+#fileJsonInput{display:none;}
 .ir{margin-top:9px;padding:8px 11px;border-radius:8px;font-size:12px;display:none;}
 .ir-ok{background:#eaf4e2;color:#3a6a28;border:1px solid #b8dca8;}
 .ir-err{background:#fde8e4;color:#8a2010;border:1px solid #e8b0a8;}
@@ -289,9 +290,34 @@ select:focus{outline:none;border-color:var(--ac);}
   <div id="tab-stats" class="tab-content"><div id="statsContent"></div></div>
   <!-- BACKUP -->
   <div id="tab-backup" class="tab-content">
-    <div class="bsec"><h3>📤 CSV Yedek Al</h3><p>Tüm aile kütüphane verilerini indirin.</p><button class="btn btn-g" id="expBtn">CSV İndir</button></div>
-    <div class="bsec"><h3>📥 CSV Yedek Yükle</h3><p>Yedeği yükleyin. <strong style="color:#c04030">Dikkat:</strong> Mevcut verilerin üzerine yazar.</p><label class="flbl" for="fileInput">📂 CSV Seç</label><input type="file" id="fileInput" accept=".csv"><div class="ir" id="ir"></div></div>
-    <div class="bsec"><h3>🔄 Sıfırla</h3><p>Tüm kitapları sil, üyeler korunur.</p><button class="btn btn-d" id="resetBtn">Kitapları Sil</button></div>
+    <div class="bsec" style="border:2px solid var(--ac)">
+      <h3>📦 Tam Yedek Al (Önerilen)</h3>
+      <p>Üyeler, kitaplar, hedefler ve ayarların tamamını tek dosyada yedekler. Telefona aktarım için bu seçeneği kullanın.</p>
+      <button class="btn btn-p" id="expJsonBtn">📦 Tam Yedek İndir (.json)</button>
+    </div>
+    <div class="bsec" style="border:2px solid var(--ac)">
+      <h3>📥 Tam Yedek Yükle</h3>
+      <p>Daha önce aldığınız <strong>.json</strong> yedeğini yükleyin. Üyeler ve kitaplar dahil her şey geri yüklenir. <strong style="color:#c04030">Dikkat:</strong> Mevcut verilerin üzerine yazar.</p>
+      <label class="flbl" for="fileJsonInput">📂 JSON Dosyası Seç</label>
+      <input type="file" id="fileJsonInput" accept=".json">
+      <div class="ir" id="ir"></div>
+    </div>
+    <div class="bsec">
+      <h3>📊 Sadece Kitapları Yedekle (CSV)</h3>
+      <p>Kitap listesini Excel/Numbers'da açılabilen CSV formatında indirir. Üye bilgileri dahil edilmez.</p>
+      <button class="btn btn-g" id="expBtn">CSV İndir</button>
+    </div>
+    <div class="bsec">
+      <h3>📥 CSV Kitap Yükle</h3>
+      <p>CSV dosyasından kitap yükleyin. Mevcut kitapların üzerine yazar, üyeler korunur.</p>
+      <label class="flbl" for="fileInput">📂 CSV Seç</label>
+      <input type="file" id="fileInput" accept=".csv">
+    </div>
+    <div class="bsec">
+      <h3>🔄 Sıfırla</h3>
+      <p>Tüm kitapları sil, üyeler korunur.</p>
+      <button class="btn btn-d" id="resetBtn">Kitapları Sil</button>
+    </div>
   </div>
   <!-- SETTINGS -->
   <div id="tab-settings" class="tab-content">
@@ -1045,6 +1071,57 @@ function drawIcon(){
   ctx.font='bold '+Math.round(sz*.26)+'px serif';ctx.fillStyle='#e05a7a';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('♥',sz/2,by+bh*.62);
   try{document.getElementById('touchIcon').href=c.toDataURL('image/png');}catch(e){}
 }
+
+// ─── JSON TAM YEDEK ──────────────────────────────────────────────────────────
+document.getElementById('expJsonBtn').addEventListener('click',function(){
+  var payload={
+    version:2,
+    exportedAt:new Date().toISOString(),
+    libName:settings.libName,
+    theme:settings.theme,
+    members:members,
+    books:books,
+    goals:goals
+  };
+  var json=JSON.stringify(payload,null,2);
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([json],{type:'application/json;charset=utf-8;'}));
+  a.download=settings.libName+'_tam_yedek_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(a.href);
+});
+
+document.getElementById('fileJsonInput').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(ev){
+    try{
+      var data=JSON.parse(ev.target.result);
+      if(!data.members||!data.books)throw new Error('Geçersiz yedek dosyası. Tam yedek (.json) seçin.');
+      var mCount=data.members.length;
+      var bCount=data.books.length;
+      if(!confirm(mCount+' üye ve '+bCount+' kitap yüklenecek.\nMevcut tüm veriler silinecek.\nDevam edilsin mi?'))return;
+      members=data.members||[];
+      books=data.books||[];
+      goals=data.goals||{};
+      if(data.libName)settings.libName=data.libName;
+      if(data.theme)settings.theme=data.theme;
+      persistMembers();
+      persist();
+      persistSettings();
+      try{localStorage.setItem(GK,JSON.stringify(goals));}catch(ex){}
+      currentMember='all';
+      applyTheme(settings.theme);
+      applyThemeUI(settings.theme);
+      applyLibName(settings.libName);
+      renderMemberBar();
+      renderBooks();
+      renderSeries();
+      showIR('✓ '+mCount+' üye ve '+bCount+' kitap başarıyla yüklendi!','ok');
+    }catch(err){showIR('Hata: '+err.message,'err');}
+    e.target.value='';
+  };
+  r.readAsText(f,'UTF-8');
+});
 
 // ─── BACKUP ───────────────────────────────────────────────────────────────────
 document.getElementById('expBtn').addEventListener('click',function(){
