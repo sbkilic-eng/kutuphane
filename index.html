@@ -1394,18 +1394,6 @@ async function syncConnect(){
   btn.disabled=false;btn.textContent='Bağlan';
 }
 
-  var token=getSyncToken();
-  if(!token)throw new Error('Token bulunamadı');
-  var url='https://api.github.com/gists'+(gistId?'/'+gistId:'');
-  var opts={method:method,headers:{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'}};
-  if(body)opts.body=JSON.stringify(body);
-  var r=await fetch(url,opts);
-  if(r.status===401)throw new Error('Token geçersiz veya süresi dolmuş');
-  if(r.status===404)throw new Error('Gist bulunamadı');
-  if(!r.ok)throw new Error('GitHub API hatası: '+r.status);
-  return r.json();
-}
-
 async function syncPush(silent){
   var token=getSyncToken(),gid=getSyncGistId();
   if(!token||!gid)return;
