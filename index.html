@@ -325,45 +325,41 @@ select:focus{outline:none;border-color:var(--ac);}
     <div class="setsec"><h3>🎯 Yıllık Sayfa Hedefleri</h3><p>Her üye için yıllık okuma hedefini sayfa sayısı olarak belirleyin.</p><div id="goalsList"></div></div>
     <div class="setsec" id="syncSec">
       <h3>☁️ Bulut Senkronizasyonu</h3>
-      <p style="margin-bottom:10px">Bilgisayar ve telefon arasında otomatik senkronizasyon.</p>
 
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <div style="flex:1;background:var(--sf2);border-radius:10px;padding:11px;font-size:12px;line-height:1.6">
-          <div style="font-weight:700;color:var(--ac);margin-bottom:4px">👑 Kurucu (1 kişi)</div>
-          Token oluşturur, Gist yaratır, hem yükler hem indirir. JSON yedeği alıp aileyle paylaşır.
-        </div>
-        <div style="flex:1;background:var(--sf2);border-radius:10px;padding:11px;font-size:12px;line-height:1.6">
-          <div style="font-weight:700;color:var(--td);margin-bottom:4px">👨‍👩‍👧 Diğerleri</div>
-          Paylaşılan JSON yedeği yükler → Gist ID otomatik tanınır → ⬇ İndir ile güncellemeleri alır.<br><small>Yüklemek için aynı token gerekli.</small>
-        </div>
-      </div>
+      <!-- ADIM 1: Durum -->
+      <div id="syncCurrentStatus" style="margin-bottom:12px;"></div>
 
-      <div class="fg" style="margin-bottom:8px">
-        <label>GitHub Personal Access Token <span style="font-size:10px;color:var(--td)">(yüklemek için gerekli)</span></label>
-        <div style="display:flex;gap:7px">
-          <input id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxx" style="flex:1;font-family:monospace;font-size:12px">
+      <!-- ADIM 2: Token ile bağlantı -->
+      <div style="background:var(--sf2);border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-weight:600;font-size:12px;color:var(--tx);margin-bottom:8px">🔑 Token ile Bağlan (yükleme + indirme)</div>
+        <div style="display:flex;gap:7px;margin-bottom:6px">
+          <input id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxx" style="flex:1;font-family:monospace;font-size:12px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:8px 10px;border-radius:8px;">
           <button class="btn btn-p" id="syncConnectBtn">Bağlan</button>
         </div>
-        <div style="font-size:11px;color:var(--td);margin-top:4px">
-          <a href="https://github.com/settings/tokens/new?scopes=gist&description=Aile+Kutuphanesi" target="_blank" style="color:var(--ac)">Token oluşturmak için tıklayın</a> → Gist iznini seçin → Kopyalayın
+        <div style="font-size:11px;color:var(--td)">
+          <a href="https://github.com/settings/tokens/new?scopes=gist&description=Aile+Kutuphanesi" target="_blank" style="color:var(--ac)">Token oluştur</a> → Gist iznini seç → Kopyala → Yapıştır
         </div>
       </div>
 
-      <div class="fg" style="margin-bottom:8px">
-        <label>Gist ID <span style="font-size:10px;color:var(--td)">(token olmadan sadece indirme)</span></label>
-        <div style="display:flex;gap:7px">
-          <input id="gistIdInput" type="text" placeholder="JSON yedek yükleyince otomatik dolar" style="flex:1;font-family:monospace;font-size:11px">
+      <!-- ADIM 3: Sadece Gist ID ile indirme -->
+      <div style="background:var(--sf2);border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-weight:600;font-size:12px;color:var(--tx);margin-bottom:8px">🔗 Gist ID ile Bağlan (sadece indirme — token gerekmez)</div>
+        <div style="display:flex;gap:7px;">
+          <input id="gistIdInput" type="text" placeholder="Gist ID buraya (ör: a1b2c3d4e5f6...)" style="flex:1;font-family:monospace;font-size:11px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:8px 10px;border-radius:8px;">
           <button class="btn btn-s" id="syncPullOnlyBtn">⬇ İndir</button>
+        </div>
+        <div style="font-size:11px;color:var(--td);margin-top:5px">
+          Diğer cihazdaki Gist ID'yi buraya yapıştırın, güncellemeleri çekin.
         </div>
       </div>
 
       <div id="syncStatus" style="display:none;padding:10px 12px;border-radius:9px;font-size:12px;margin-bottom:8px"></div>
-      <div id="syncControls" style="display:none;gap:8px;flex-wrap:wrap">
+
+      <div id="syncControls" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:8px">
         <button class="btn btn-g" id="syncPushBtn">⬆ Yükle</button>
         <button class="btn btn-s" id="syncPullBtn">⬇ İndir</button>
         <button class="btn btn-s" id="syncDisconnectBtn" style="color:#c04030;border-color:#c04030">Bağlantıyı Kes</button>
       </div>
-      <div id="syncInfo" style="display:none;margin-top:8px;font-size:11px;color:var(--td)"></div>
     </div>
     <div class="setsec"><h3>🏠 Kütüphane Adı</h3><input class="name-input" id="libName" type="text" maxlength="30"><button class="btn btn-p" id="saveNameBtn" style="margin-top:10px">Kaydet</button></div>
     <div class="setsec"><h3>🎨 Tema</h3>
@@ -1327,17 +1323,77 @@ function showSyncStatus(msg,type,persist2){
   if(!persist2)setTimeout(function(){el.style.display='none';},5000);
 }
 function updateSyncInfo(){
-  var el=document.getElementById('syncInfo');if(!el)return;
   var gid=getSyncGistId();
-  if(gid){el.style.display='block';el.innerHTML='Gist: <a href="https://gist.github.com/'+gid+'" target="_blank" style="color:var(--ac)">gist.github.com/'+gid+'</a>';}
-  else{el.style.display='none';}
-}
-function showSyncControls(connected){
-  var c=document.getElementById('syncControls');if(c)c.style.display=connected?'flex':'none';
-  var t=document.getElementById('ghToken');if(t&&connected)t.type='password';
+  var el=document.getElementById('syncCurrentStatus');
+  if(!el)return;
+  if(gid){
+    var hasToken=!!getSyncToken();
+    el.innerHTML='<div style="background:'+(hasToken?'#eaf4e2':'var(--sf2)')+';border:1px solid '+(hasToken?'#b8dca8':'var(--bd)')+';border-radius:10px;padding:12px;">'
+      +'<div style="font-size:12px;font-weight:600;color:'+(hasToken?'#3a6a28':'var(--tx)')+';margin-bottom:8px">'
+        +(hasToken?'✅ Tam Senkronizasyon Aktif':'🔗 Sadece İndirme Modu')+'</div>'
+      +'<div style="font-size:11px;color:var(--td);margin-bottom:6px">Gist ID — diğer cihaza kopyalayın:</div>'
+      +'<div style="display:flex;gap:7px;align-items:center">'
+        +'<code style="flex:1;background:var(--bg);border:1px solid var(--bd);padding:7px 10px;border-radius:7px;font-size:10px;word-break:break-all;color:var(--tx)">'+gid+'</code>'
+        +'<button id="copyGistIdBtn" class="btn btn-s" style="flex-shrink:0;font-size:11px;padding:6px 10px">📋 Kopyala</button>'
+      +'</div>'
+      +(hasToken?'<div style="font-size:11px;color:#5a8a50;margin-top:7px">Her kayıtta otomatik yükleniyor · Uygulama açılışında otomatik indiriliyor</div>'
+               :'<div style="font-size:11px;color:var(--td);margin-top:7px">Token girerek yükleme de yapabilirsiniz</div>')
+      +'</div>';
+    var cb=document.getElementById('copyGistIdBtn');
+    if(cb)cb.addEventListener('click',function(){
+      var copy=function(){var ta=document.createElement('textarea');ta.value=gid;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);};
+      if(navigator.clipboard){navigator.clipboard.writeText(gid).catch(copy);}else{copy();}
+      cb.textContent='✓ Kopyalandı';setTimeout(function(){cb.textContent='📋 Kopyala';},2000);
+    });
+    var gi=document.getElementById('gistIdInput');if(gi)gi.value=gid;
+  } else {
+    el.innerHTML='<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:11px;font-size:12px;color:var(--td)">⚠️ Henüz senkronizasyon kurulmamış.</div>';
+  }
 }
 
+function showSyncControls(connected){
+  var c=document.getElementById('syncControls');if(c)c.style.display=connected?'flex':'none';
+}
 async function gistRequest(method,gistId,body){
+  var token=getSyncToken();
+  if(!token)throw new Error('Token bulunamadı');
+  var url='https://api.github.com/gists'+(gistId?'/'+gistId:'');
+  var opts={method:method,headers:{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'}};
+  if(body)opts.body=JSON.stringify(body);
+  var r=await fetch(url,opts);
+  if(r.status===401)throw new Error('Token geçersiz veya süresi dolmuş');
+  if(r.status===404)throw new Error('Gist bulunamadı. Gist ID doğru mu?');
+  if(!r.ok)throw new Error('GitHub API hatası: '+r.status);
+  return r.json();
+}
+
+async function syncConnect(){
+  var tokenInput=document.getElementById('ghToken').value.trim();
+  // Maskeli (•••) ise mevcut kaydedilmiş token'ı kullan
+  var token=tokenInput.startsWith('•')?getSyncToken():tokenInput;
+  if(!token){showSyncStatus('Lütfen token girin.','err');return;}
+  var btn=document.getElementById('syncConnectBtn');btn.disabled=true;btn.textContent='⏳';
+  try{
+    setSyncToken(token);
+    // Öncelik: Gist ID alanındaki değer > localStorage'daki değer
+    var manualGid=(document.getElementById('gistIdInput').value||'').trim();
+    if(manualGid)setSyncGistId(manualGid);
+    var gid=getSyncGistId();
+    if(gid){
+      // Mevcut Gist'e bağlan — yeni oluşturma
+      await doSyncPull(true);
+      showSyncStatus('✅ Mevcut Gist\'e bağlandı ve veriler senkronize edildi!','ok');
+    } else {
+      // Hiç Gist ID yok — yeni oluştur
+      var created=await gistRequest('POST',null,{description:'Aile Kütüphanesi Senkronizasyon',public:true,files:{'kutuphane.json':{content:buildSyncPayload()}}});
+      setSyncGistId(created.id);
+      showSyncStatus('✅ Yeni Gist oluşturuldu! Gist ID\'yi diğer cihaza kopyalayın.','ok',true);
+    }
+    showSyncControls(true);updateSyncInfo();
+  }catch(err){showSyncStatus('❌ Hata: '+err.message,'err',true);}
+  btn.disabled=false;btn.textContent='Bağlan';
+}
+
   var token=getSyncToken();
   if(!token)throw new Error('Token bulunamadı');
   var url='https://api.github.com/gists'+(gistId?'/'+gistId:'');
@@ -1348,28 +1404,6 @@ async function gistRequest(method,gistId,body){
   if(r.status===404)throw new Error('Gist bulunamadı');
   if(!r.ok)throw new Error('GitHub API hatası: '+r.status);
   return r.json();
-}
-
-async function syncConnect(){
-  var token=document.getElementById('ghToken').value.trim();
-  if(!token){showSyncStatus('Lütfen token girin.','err');return;}
-  var btn=document.getElementById('syncConnectBtn');btn.disabled=true;btn.textContent='⏳';
-  try{
-    setSyncToken(token);
-    var gid=getSyncGistId();
-    if(!gid){
-      // Yeni Gist oluştur
-      var created=await gistRequest('POST',null,{description:'Aile Kütüphanesi Senkronizasyon',public:true,files:{'kutuphane.json':{content:buildSyncPayload()}}});
-      setSyncGistId(created.id);gid=created.id;
-      showSyncStatus('✓ Bağlandı! Yeni Gist oluşturuldu. İlk yükleme yapıldı.','ok');
-    } else {
-      // Mevcut Gist'i çek ve birleştir
-      await doSyncPull(true);
-      showSyncStatus('✓ Bağlandı! Veriler senkronize edildi.','ok');
-    }
-    showSyncControls(true);updateSyncInfo();
-  }catch(err){showSyncStatus('❌ Hata: '+err.message,'err',true);}
-  btn.disabled=false;btn.textContent='Bağlan';
 }
 
 async function syncPush(silent){
