@@ -323,6 +323,48 @@ select:focus{outline:none;border-color:var(--ac);}
   <div id="tab-settings" class="tab-content">
     <div class="setsec"><h3>👨‍👩‍👧 Aile Üyeleri</h3><div class="member-list" id="memberList"></div><button class="btn btn-p" id="addMemberBtn2">+ Yeni Üye Ekle</button></div>
     <div class="setsec"><h3>🎯 Yıllık Sayfa Hedefleri</h3><p>Her üye için yıllık okuma hedefini sayfa sayısı olarak belirleyin.</p><div id="goalsList"></div></div>
+    <div class="setsec" id="syncSec">
+      <h3>☁️ Bulut Senkronizasyonu</h3>
+      <p style="margin-bottom:10px">Bilgisayar ve telefon arasında otomatik senkronizasyon.</p>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;background:var(--sf2);border-radius:10px;padding:11px;font-size:12px;line-height:1.6">
+          <div style="font-weight:700;color:var(--ac);margin-bottom:4px">👑 Kurucu (1 kişi)</div>
+          Token oluşturur, Gist yaratır, hem yükler hem indirir. JSON yedeği alıp aileyle paylaşır.
+        </div>
+        <div style="flex:1;background:var(--sf2);border-radius:10px;padding:11px;font-size:12px;line-height:1.6">
+          <div style="font-weight:700;color:var(--td);margin-bottom:4px">👨‍👩‍👧 Diğerleri</div>
+          Paylaşılan JSON yedeği yükler → Gist ID otomatik tanınır → ⬇ İndir ile güncellemeleri alır.<br><small>Yüklemek için aynı token gerekli.</small>
+        </div>
+      </div>
+
+      <div class="fg" style="margin-bottom:8px">
+        <label>GitHub Personal Access Token <span style="font-size:10px;color:var(--td)">(yüklemek için gerekli)</span></label>
+        <div style="display:flex;gap:7px">
+          <input id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxx" style="flex:1;font-family:monospace;font-size:12px">
+          <button class="btn btn-p" id="syncConnectBtn">Bağlan</button>
+        </div>
+        <div style="font-size:11px;color:var(--td);margin-top:4px">
+          <a href="https://github.com/settings/tokens/new?scopes=gist&description=Aile+Kutuphanesi" target="_blank" style="color:var(--ac)">Token oluşturmak için tıklayın</a> → Gist iznini seçin → Kopyalayın
+        </div>
+      </div>
+
+      <div class="fg" style="margin-bottom:8px">
+        <label>Gist ID <span style="font-size:10px;color:var(--td)">(token olmadan sadece indirme)</span></label>
+        <div style="display:flex;gap:7px">
+          <input id="gistIdInput" type="text" placeholder="JSON yedek yükleyince otomatik dolar" style="flex:1;font-family:monospace;font-size:11px">
+          <button class="btn btn-s" id="syncPullOnlyBtn">⬇ İndir</button>
+        </div>
+      </div>
+
+      <div id="syncStatus" style="display:none;padding:10px 12px;border-radius:9px;font-size:12px;margin-bottom:8px"></div>
+      <div id="syncControls" style="display:none;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-g" id="syncPushBtn">⬆ Yükle</button>
+        <button class="btn btn-s" id="syncPullBtn">⬇ İndir</button>
+        <button class="btn btn-s" id="syncDisconnectBtn" style="color:#c04030;border-color:#c04030">Bağlantıyı Kes</button>
+      </div>
+      <div id="syncInfo" style="display:none;margin-top:8px;font-size:11px;color:var(--td)"></div>
+    </div>
     <div class="setsec"><h3>🏠 Kütüphane Adı</h3><input class="name-input" id="libName" type="text" maxlength="30"><button class="btn btn-p" id="saveNameBtn" style="margin-top:10px">Kaydet</button></div>
     <div class="setsec"><h3>🎨 Tema</h3>
       <div class="theme-grid" id="themeGrid">
@@ -463,7 +505,9 @@ function loadAll(){
   try{var r3=localStorage.getItem(SK);if(r3)settings=Object.assign(settings,JSON.parse(r3));}catch(e){}
   try{var r4=localStorage.getItem(GK);if(r4)goals=JSON.parse(r4);}catch(e){}
 }
-function persist(){try{localStorage.setItem(BK,JSON.stringify(books));}catch(e){}updateHeader();}
+function persist(){try{localStorage.setItem(BK,JSON.stringify(books));}catch(e){}updateHeader();scheduleSyncPush();}
+var _syncTimer=null;
+function scheduleSyncPush(){if(!getSyncToken()||!getSyncGistId())return;clearTimeout(_syncTimer);_syncTimer=setTimeout(function(){syncPush(true);},3000);}
 function persistMembers(){try{localStorage.setItem(MK,JSON.stringify(members));}catch(e){};}
 function persistSettings(){try{localStorage.setItem(SK,JSON.stringify(settings));}catch(e){};}
 function getGoal(mid,year){return(goals[mid]&&goals[mid][String(year)])||0;}
@@ -658,8 +702,8 @@ document.getElementById('saveBook').addEventListener('click',function(){
     note:document.getElementById('fNote').value.trim(),
     publisher:document.getElementById('fPub').value.trim(),
     coverUrl:prevCover.coverUrl||''};
-  if(editBookId){var idx=books.findIndex(function(b){return b.id===editBookId;});books[idx]=Object.assign({},books[idx],data);}
-  else{data.id=uid();data.addedAt=new Date().toISOString();books.push(data);}
+  if(editBookId){var idx=books.findIndex(function(b){return b.id===editBookId;});books[idx]=Object.assign({},books[idx],data,{updatedAt:new Date().toISOString()});}
+  else{data.id=uid();data.addedAt=new Date().toISOString();data.updatedAt=data.addedAt;books.push(data);}
   persist();closeBookModal();renderBooks();renderSeries();
 });
 document.getElementById('addBtn').addEventListener('click',function(){openBookModal();});
@@ -695,29 +739,116 @@ function fillFromISBN(d){
     var cw=document.getElementById('coverPreviewWrap');
     document.getElementById('coverPreview').src=d.coverUrl;
     cw.style.display='block';
-    // Store temporarily
     window._pendingCoverUrl=d.coverUrl;
   }
 }
+
+// Her kaynak ayrı bir Promise döner — hata verse de diğerini durdurmaz
+async function queryGoogleBooks(isbn){
+  var r=await fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:'+isbn+'&maxResults=1',{signal:AbortSignal.timeout(7000)});
+  if(!r.ok) return null;
+  var d=await r.json();
+  if(!d.totalItems||!d.items) return null;
+  var vi=d.items[0].volumeInfo;
+  var cover=(vi.imageLinks&&(vi.imageLinks.extraLarge||vi.imageLinks.large||vi.imageLinks.medium||vi.imageLinks.thumbnail||''))||'';
+  if(cover) cover=cover.replace('http:','https:');
+  return {title:vi.title||'',author:(vi.authors||[]).join(', '),pages:vi.pageCount||null,
+    publisher:vi.publisher||'',desc:(vi.description||'').replace(/<[^>]+>/g,''),coverUrl:cover,src:'Google Books'};
+}
+
+async function queryOpenLibraryBibkeys(isbn){
+  var r=await fetch('https://openlibrary.org/api/books?bibkeys=ISBN:'+isbn+'&format=json&jscmd=data',{signal:AbortSignal.timeout(8000)});
+  if(!r.ok) return null;
+  var d=await r.json();
+  var bk=d['ISBN:'+isbn];
+  if(!bk) return null;
+  var cover=bk.cover?(bk.cover.large||bk.cover.medium||bk.cover.small||''):'';
+  return {title:bk.title||'',author:(bk.authors||[]).map(function(a){return a.name;}).join(', '),
+    pages:bk.number_of_pages||null,publisher:(bk.publishers||[]).map(function(p){return p.name;}).join(', '),
+    desc:(bk.notes&&(typeof bk.notes==='string'?bk.notes:bk.notes.value))||'',coverUrl:cover,src:'Open Library'};
+}
+
+async function queryOpenLibrarySearch(isbn){
+  var r=await fetch('https://openlibrary.org/search.json?isbn='+isbn+'&fields=title,author_name,number_of_pages_median,publisher,first_sentence,cover_i&limit=1',{signal:AbortSignal.timeout(8000)});
+  if(!r.ok) return null;
+  var d=await r.json();
+  if(!d.numFound||!d.docs||!d.docs.length) return null;
+  var b=d.docs[0];
+  var coverId=b.cover_i;
+  var cover=coverId?('https://covers.openlibrary.org/b/id/'+coverId+'-L.jpg'):'';
+  var desc=(b.first_sentence&&(typeof b.first_sentence==='string'?b.first_sentence:(b.first_sentence.value||'')))||'';
+  return {title:b.title||'',author:(b.author_name||[]).join(', '),pages:b.number_of_pages_median||null,
+    publisher:(b.publisher||[]).slice(0,1).join('')||'',desc:desc,coverUrl:cover,src:'Open Library Arama'};
+}
+
+async function queryLibraryOfCongress(isbn){
+  var r=await fetch('https://www.loc.gov/books/?q=isbn%3A'+isbn+'&fo=json&count=1',{signal:AbortSignal.timeout(8000)});
+  if(!r.ok) return null;
+  var d=await r.json();
+  if(!d.results||!d.results.length) return null;
+  var b=d.results[0];
+  var title=b.title||'';
+  // LoC başlık genellikle "Başlık / Yazar" şeklinde gelir
+  var authorStr='';
+  if(b.contributor&&b.contributor.length) authorStr=b.contributor[0].replace(/,\s*author\.?$/i,'').trim();
+  else if(title.includes('/')) authorStr=title.split('/').pop().trim();
+  return {title:title.split('/')[0].trim()||'',author:authorStr,pages:null,
+    publisher:(b.publisher||[''])[0]||'',desc:'',coverUrl:'',src:'Library of Congress'};
+}
+
+// Sonuçları puana göre sırala — en çok alan kazanır
+function scoreResult(r){
+  if(!r) return 0;
+  return (r.title?3:0)+(r.author?2:0)+(r.pages?2:0)+(r.publisher?1:0)+(r.coverUrl?3:0)+(r.desc?1:0);
+}
+
+// En iyi alanlara göre birleştirilmiş sonuç döner
+function mergeResults(results){
+  var valid=results.filter(Boolean).sort(function(a,b){return scoreResult(b)-scoreResult(a);});
+  if(!valid.length) return null;
+  var merged=Object.assign({},valid[0]);
+  // Eksik alanları diğer kaynaklardan tamamla
+  valid.slice(1).forEach(function(r){
+    if(!merged.title&&r.title) merged.title=r.title;
+    if(!merged.author&&r.author) merged.author=r.author;
+    if(!merged.pages&&r.pages) merged.pages=r.pages;
+    if(!merged.publisher&&r.publisher) merged.publisher=r.publisher;
+    if(!merged.coverUrl&&r.coverUrl) merged.coverUrl=r.coverUrl;
+    if(!merged.desc&&r.desc) merged.desc=r.desc;
+  });
+  // Hangi kaynakların kullanıldığını kaydet
+  merged.src=valid.map(function(r){return r.src;}).join(' + ');
+  return merged;
+}
+
 async function fetchISBN(isbn){
-  var btn=document.getElementById('isbnBtn');btn.disabled=true;btn.textContent='⏳';showISBNSt('Sorgulanıyor…','warn');
+  var btn=document.getElementById('isbnBtn');
+  btn.disabled=true; btn.textContent='⏳';
+  showISBNSt('4 kaynak paralel sorgulanıyor…','warn');
   window._pendingCoverUrl='';
   try{
-    var gr=await fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:'+isbn+'&maxResults=1');
-    if(gr.ok){var gd=await gr.json();if(gd.totalItems>0){var vi=gd.items[0].volumeInfo;
-      var cover=vi.imageLinks?(vi.imageLinks.thumbnail||vi.imageLinks.smallThumbnail||''):'';
-      if(cover)cover=cover.replace('http:','https:');
-      fillFromISBN({title:vi.title||'',author:(vi.authors||[]).join(', '),pages:vi.pageCount||'',publisher:vi.publisher||'',desc:(vi.description||'').replace(/<[^>]+>/g,''),coverUrl:cover});
-      showISBNSt('✓ Google Books\'tan çekildi!'+(cover?' Kapak da eklendi.':''),'ok');btn.disabled=false;btn.textContent='🔍';return;}}
-    var or=await fetch('https://openlibrary.org/api/books?bibkeys=ISBN:'+isbn+'&format=json&jscmd=data');
-    if(or.ok){var od=await or.json();var bk=od['ISBN:'+isbn];if(bk){
-      var olCover=bk.cover?(bk.cover.large||bk.cover.medium||bk.cover.small||''):'';
-      fillFromISBN({title:bk.title||'',author:(bk.authors||[]).map(function(a){return a.name;}).join(', '),pages:bk.number_of_pages||'',publisher:(bk.publishers||[]).map(function(p){return p.name;}).join(', '),coverUrl:olCover});
-      showISBNSt('✓ Open Library\'dan çekildi!','ok');btn.disabled=false;btn.textContent='🔍';return;}}
-    showISBNSt('❌ Bulunamadı, bilgileri manuel girin.','err');
-  }catch(err){showISBNSt('❌ Bağlantı hatası.','err');}
-  btn.disabled=false;btn.textContent='🔍';
+    // Tüm kaynakları aynı anda başlat, hata verse null döner
+    var settled=await Promise.allSettled([
+      queryGoogleBooks(isbn),
+      queryOpenLibraryBibkeys(isbn),
+      queryOpenLibrarySearch(isbn),
+      queryLibraryOfCongress(isbn)
+    ]);
+    var results=settled.map(function(s){return s.status==='fulfilled'?s.value:null;});
+    var best=mergeResults(results);
+    if(best){
+      fillFromISBN(best);
+      var hasData=[best.title,best.author,best.pages,best.publisher].filter(Boolean).length;
+      showISBNSt('✓ '+best.src+' ('+hasData+'/4 alan dolu'+(best.coverUrl?' · kapak eklendi':'')+')', 'ok');
+    } else {
+      showISBNSt('❌ Hiçbir kaynakta bulunamadı. Bilgileri manuel girin.','err');
+    }
+  }catch(err){
+    showISBNSt('❌ Bağlantı hatası: '+err.message,'err');
+  }
+  btn.disabled=false; btn.textContent='🔍';
 }
+
 // Patch saveBook to use pending cover
 var _origSave=document.getElementById('saveBook').onclick;
 document.getElementById('saveBook').addEventListener('click',function(){
@@ -1100,9 +1231,15 @@ document.getElementById('fileJsonInput').addEventListener('change',function(e){
       var mCount=data.members.length;
       var bCount=data.books.length;
       if(!confirm(mCount+' üye ve '+bCount+' kitap yüklenecek.\nMevcut tüm veriler silinecek.\nDevam edilsin mi?'))return;
-      members=data.members||[];
-      books=data.books||[];
-      goals=data.goals||{};
+      // Gist ID varsa otomatik kaydet (token olmasa bile çekme yapılabilsin)
+      if(data.gistId && !getSyncGistId()){
+        setSyncGistId(data.gistId);
+        showIR('✓ Gist ID otomatik tanındı. Ayarlar → ☁️ bölümünden senkronizasyonu tamamlayabilirsiniz.','ok');
+      }
+      var local={members:members,books:books,goals:goals,libName:settings.libName,theme:settings.theme};
+      var merged=smartMerge(local,data);
+      var newBooks=merged.books.length-books.length;
+      members=merged.members;books=merged.books;goals=merged.goals;
       if(data.libName)settings.libName=data.libName;
       if(data.theme)settings.theme=data.theme;
       persistMembers();
@@ -1116,7 +1253,7 @@ document.getElementById('fileJsonInput').addEventListener('change',function(e){
       renderMemberBar();
       renderBooks();
       renderSeries();
-      showIR('✓ '+mCount+' üye ve '+bCount+' kitap başarıyla yüklendi!','ok');
+      showIR('✓ '+merged.members.length+' üye ve '+merged.books.length+' kitap yüklendi'+(newBooks>0?' ('+newBooks+' yeni eklendi)':'')+'!','ok');
     }catch(err){showIR('Hata: '+err.message,'err');}
     e.target.value='';
   };
@@ -1154,11 +1291,165 @@ function pcsv(line){var res=[],cur='',q=false;for(var i=0;i<line.length;i++){if(
 function showIR(msg,t){var el=document.getElementById('ir');el.textContent=msg;el.className='ir ir-'+t;el.style.display='block';setTimeout(function(){el.style.display='none';},5000);}
 document.getElementById('resetBtn').addEventListener('click',function(){if(!confirm('Tüm kitaplar silinecek. Emin misiniz?'))return;books=[];persist();renderBooks();renderSeries();});
 
+// ─── GITHUB GIST SYNC ────────────────────────────────────────────────────────
+var SYNC_TOKEN_KEY='ktp_sync_token', SYNC_GIST_KEY='ktp_sync_gist';
+function getSyncToken(){try{return localStorage.getItem(SYNC_TOKEN_KEY)||'';}catch(e){return '';}}
+function getSyncGistId(){try{return localStorage.getItem(SYNC_GIST_KEY)||'';}catch(e){return '';}}
+function setSyncToken(t){try{localStorage.setItem(SYNC_TOKEN_KEY,t);}catch(e){}}
+function setSyncGistId(g){try{localStorage.setItem(SYNC_GIST_KEY,g);}catch(e){}}
+
+function buildSyncPayload(){
+  return JSON.stringify({version:2,exportedAt:new Date().toISOString(),libName:settings.libName,theme:settings.theme,members:members,books:books,goals:goals,gistId:getSyncGistId()},null,0);
+}
+
+// Akıllı birleştirme: iki kaynaktan en güncel halleri al
+function smartMerge(local,remote){
+  // Üyeler: remote kazanır (nadiren değişir, çakışma az)
+  var mergedMembers=remote.members&&remote.members.length?remote.members:local.members;
+  // Kitaplar: ID bazında, updatedAt'e göre en yeni kazanır
+  var bmap={};
+  (local.books||[]).forEach(function(b){bmap[b.id]=b;});
+  (remote.books||[]).forEach(function(b){
+    if(!bmap[b.id]){bmap[b.id]=b;}
+    else{var lu=bmap[b.id].updatedAt||bmap[b.id].addedAt||'';var ru=b.updatedAt||b.addedAt||'';if(ru>lu)bmap[b.id]=b;}
+  });
+  // Hedefler: birleştir
+  var mergedGoals=Object.assign({},local.goals||{},remote.goals||{});
+  return{members:mergedMembers,books:Object.values(bmap),goals:mergedGoals,libName:remote.libName||local.libName,theme:remote.theme||local.theme};
+}
+
+function showSyncStatus(msg,type,persist2){
+  var el=document.getElementById('syncStatus');if(!el)return;
+  el.style.display='block';
+  var cols={ok:'background:#eaf4e2;color:#3a6a28;border:1px solid #b8dca8',err:'background:#fde8e4;color:#8a2010;border:1px solid #e8b0a8',info:'background:var(--sf2);color:var(--td);border:1px solid var(--bd)'};
+  el.style.cssText=cols[type]||cols.info;el.style.padding='10px 12px';el.style.borderRadius='9px';el.style.fontSize='12px';
+  el.textContent=msg;
+  if(!persist2)setTimeout(function(){el.style.display='none';},5000);
+}
+function updateSyncInfo(){
+  var el=document.getElementById('syncInfo');if(!el)return;
+  var gid=getSyncGistId();
+  if(gid){el.style.display='block';el.innerHTML='Gist: <a href="https://gist.github.com/'+gid+'" target="_blank" style="color:var(--ac)">gist.github.com/'+gid+'</a>';}
+  else{el.style.display='none';}
+}
+function showSyncControls(connected){
+  var c=document.getElementById('syncControls');if(c)c.style.display=connected?'flex':'none';
+  var t=document.getElementById('ghToken');if(t&&connected)t.type='password';
+}
+
+async function gistRequest(method,gistId,body){
+  var token=getSyncToken();
+  if(!token)throw new Error('Token bulunamadı');
+  var url='https://api.github.com/gists'+(gistId?'/'+gistId:'');
+  var opts={method:method,headers:{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'}};
+  if(body)opts.body=JSON.stringify(body);
+  var r=await fetch(url,opts);
+  if(r.status===401)throw new Error('Token geçersiz veya süresi dolmuş');
+  if(r.status===404)throw new Error('Gist bulunamadı');
+  if(!r.ok)throw new Error('GitHub API hatası: '+r.status);
+  return r.json();
+}
+
+async function syncConnect(){
+  var token=document.getElementById('ghToken').value.trim();
+  if(!token){showSyncStatus('Lütfen token girin.','err');return;}
+  var btn=document.getElementById('syncConnectBtn');btn.disabled=true;btn.textContent='⏳';
+  try{
+    setSyncToken(token);
+    var gid=getSyncGistId();
+    if(!gid){
+      // Yeni Gist oluştur
+      var created=await gistRequest('POST',null,{description:'Aile Kütüphanesi Senkronizasyon',public:true,files:{'kutuphane.json':{content:buildSyncPayload()}}});
+      setSyncGistId(created.id);gid=created.id;
+      showSyncStatus('✓ Bağlandı! Yeni Gist oluşturuldu. İlk yükleme yapıldı.','ok');
+    } else {
+      // Mevcut Gist'i çek ve birleştir
+      await doSyncPull(true);
+      showSyncStatus('✓ Bağlandı! Veriler senkronize edildi.','ok');
+    }
+    showSyncControls(true);updateSyncInfo();
+  }catch(err){showSyncStatus('❌ Hata: '+err.message,'err',true);}
+  btn.disabled=false;btn.textContent='Bağlan';
+}
+
+async function syncPush(silent){
+  var token=getSyncToken(),gid=getSyncGistId();
+  if(!token||!gid)return;
+  try{
+    await gistRequest('PATCH',gid,{files:{'kutuphane.json':{content:buildSyncPayload()}}});
+    if(!silent)showSyncStatus('✓ Yükleme tamam — '+new Date().toLocaleTimeString('tr-TR'),'ok');
+    var el=document.getElementById('syncInfo');
+    if(el)el.innerHTML=(el.innerHTML.split('·')[0]||el.innerHTML)+'· Son yükleme: '+new Date().toLocaleTimeString('tr-TR');
+  }catch(err){if(!silent)showSyncStatus('❌ Yükleme hatası: '+err.message,'err');}
+}
+
+async function doSyncPull(silent){
+  var token=getSyncToken(),gid=getSyncGistId();
+  if(!gid){if(!silent)showSyncStatus('❌ Gist ID bulunamadı. Önce bir yedek yükleyin veya bağlantı kurun.','err');return;}
+  try{
+    // Token yoksa anonim olarak dene (public gist), token varsa auth ile
+    var url='https://api.github.com/gists/'+gid;
+    var hdrs={'Accept':'application/vnd.github.v3+json'};
+    if(token)hdrs['Authorization']='token '+token;
+    var r=await fetch(url,{headers:hdrs,signal:AbortSignal.timeout(10000)});
+    if(r.status===404)throw new Error('Gist bulunamadı. Token olmadan sadece public Gist\'ler erişilebilir.');
+    if(r.status===401)throw new Error('Token geçersiz');
+    if(!r.ok)throw new Error('GitHub API hatası: '+r.status);
+    var data=await r.json();
+    var raw=data.files&&data.files['kutuphane.json']&&data.files['kutuphane.json'].content;
+    if(!raw)throw new Error('Gist içinde kutuphane.json bulunamadı');
+    var remote=JSON.parse(raw);
+    var local={members:members,books:books,goals:goals,libName:settings.libName,theme:settings.theme};
+    var merged=smartMerge(local,remote);
+    var addedCount=Math.max(merged.books.length-books.length,0);
+    members=merged.members;books=merged.books;goals=merged.goals;
+    if(merged.libName)settings.libName=merged.libName;
+    if(merged.theme)settings.theme=merged.theme;
+    persistMembers();try{localStorage.setItem(BK,JSON.stringify(books));}catch(e){}try{localStorage.setItem(GK,JSON.stringify(goals));}catch(e){}persistSettings();
+    updateHeader();renderMemberBar();renderBooks();renderSeries();
+    applyTheme(settings.theme);applyLibName(settings.libName);
+    if(!silent)showSyncStatus('✓ İndirme tamam'+(addedCount>0?' · '+addedCount+' yeni kayıt eklendi':' · Veriler güncel'),'ok');
+  }catch(err){if(!silent)showSyncStatus('❌ İndirme hatası: '+err.message,'err');}
+}
+
+function syncDisconnect(){
+  if(!confirm('Senkronizasyon bağlantısı kesilecek. Veriler bu cihazda korunur.'))return;
+  setSyncToken('');setSyncGistId('');
+  document.getElementById('ghToken').value='';
+  showSyncControls(false);
+  document.getElementById('syncStatus').style.display='none';
+  document.getElementById('syncInfo').style.display='none';
+}
+
+function initSyncUI(){
+  var token=getSyncToken(),gid=getSyncGistId();
+  if(token){document.getElementById('ghToken').value='•'.repeat(12);showSyncControls(true);updateSyncInfo();}
+  if(gid){var gi=document.getElementById('gistIdInput');if(gi)gi.value=gid;}
+
+  document.getElementById('syncConnectBtn').addEventListener('click',syncConnect);
+  document.getElementById('syncPushBtn').addEventListener('click',function(){syncPush(false);});
+  document.getElementById('syncPullBtn').addEventListener('click',function(){doSyncPull(false);});
+  document.getElementById('syncDisconnectBtn').addEventListener('click',syncDisconnect);
+
+  // Gist ID alanından direkt pull (token olmadan)
+  document.getElementById('syncPullOnlyBtn').addEventListener('click',function(){
+    var gidVal=document.getElementById('gistIdInput').value.trim();
+    if(gidVal){setSyncGistId(gidVal);updateSyncInfo();}
+    doSyncPull(false);
+  });
+  document.getElementById('gistIdInput').addEventListener('change',function(){
+    var v=this.value.trim();if(v)setSyncGistId(v);
+  });
+}
+
 // ─── INIT ────────────────────────────────────────────────────────────────────
 loadAll();
 applyTheme(settings.theme);applyThemeUI(settings.theme);applyLibName(settings.libName);
 renderMemberBar();renderBooks();renderSeries();
 setTimeout(drawIcon,200);
+initSyncUI();
+// Uygulama açılışında sync varsa otomatik çek (token olmasa da Gist ID varsa dene)
+if(getSyncGistId()){setTimeout(function(){doSyncPull(true);},1500);}
 
 </script>
 </body>
