@@ -1185,18 +1185,89 @@ document.getElementById('libName').addEventListener('keydown',function(e){if(e.k
 // ─── ICON ────────────────────────────────────────────────────────────────────
 function drawIcon(){
   var c=document.getElementById('iconPreview');if(!c)return;
-  var sz=56,ctx=c.getContext('2d'),t=settings.theme;
-  var pal={krem:['#c4893e','#8a5520'],gece:['#b89ae0','#6a3fac'],deniz:['#2a9ab8','#1a5a7a'],yaprak:['#3d8e5a','#1e5a34']};
-  var p=pal[t]||pal.krem,r=sz*.22;
-  ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(sz-r,0);ctx.arcTo(sz,0,sz,r,r);ctx.lineTo(sz,sz-r);ctx.arcTo(sz,sz,sz-r,sz,r);ctx.lineTo(r,sz);ctx.arcTo(0,sz,0,sz-r,r);ctx.lineTo(0,r);ctx.arcTo(0,0,r,0,r);ctx.closePath();
-  var g=ctx.createLinearGradient(0,0,sz,sz);g.addColorStop(0,p[0]);g.addColorStop(1,p[1]);ctx.fillStyle=g;ctx.fill();
-  var bx=sz*.14,by=sz*.18,bw=sz*.72,bh=sz*.58,sp=sz*.06;
-  ctx.fillStyle='rgba(255,255,255,.95)';ctx.beginPath();ctx.roundRect(bx,by,bw/2-sp/2,bh,sz*.04);ctx.fill();
-  ctx.beginPath();ctx.roundRect(bx+bw/2+sp/2,by,bw/2-sp/2,bh,sz*.04);ctx.fill();
-  ctx.fillStyle=p[1];ctx.fillRect(bx+bw/2-sp/2,by,sp,bh);
-  ctx.fillStyle='rgba(0,0,0,.1)';for(var i=0;i<3;i++)ctx.fillRect(bx+sz*.06,by+sz*.1+i*sz*.1,bw/2-sp/2-sz*.1,sz*.016);
-  ctx.font='bold '+Math.round(sz*.26)+'px serif';ctx.fillStyle='#e05a7a';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('♥',sz/2,by+bh*.62);
+  var sz=56,ctx=c.getContext('2d');
+  c.width=c.height=sz;
+
+  // ── Yuvarlatılmış köşeli arka plan ──────────────────────────────
+  var r=sz*.22;
+  ctx.beginPath();
+  ctx.moveTo(r,0);ctx.lineTo(sz-r,0);ctx.arcTo(sz,0,sz,r,r);
+  ctx.lineTo(sz,sz-r);ctx.arcTo(sz,sz,sz-r,sz,r);
+  ctx.lineTo(r,sz);ctx.arcTo(0,sz,0,sz-r,r);
+  ctx.lineTo(0,r);ctx.arcTo(0,0,r,0,r);ctx.closePath();
+  var bg=ctx.createLinearGradient(0,0,sz,sz);
+  bg.addColorStop(0,'#5ab870');bg.addColorStop(1,'#1e5a34');
+  ctx.fillStyle=bg;ctx.fill();
+
+  // ── Geometrik arka plan deseni (soluk üçgen) ────────────────────
+  ctx.save();ctx.clip();
+  ctx.fillStyle='rgba(255,255,255,.06)';
+  ctx.beginPath();ctx.moveTo(sz*.5,sz*.06);ctx.lineTo(sz*.92,sz*.42);ctx.lineTo(sz*.5,sz*.42);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.04)';
+  ctx.beginPath();ctx.moveTo(sz*.08,sz*.42);ctx.lineTo(sz*.5,sz*.42);ctx.lineTo(sz*.5,sz*.78);ctx.closePath();ctx.fill();
+  ctx.restore();
+
+  // ── 3 Kitap sırtı ───────────────────────────────────────────────
+  // Kitap parametreleri: [x, y, w, h, opacity]
+  var books3=[
+    [sz*.28, sz*.27, sz*.14, sz*.52, .18],  // sol arka
+    [sz*.42, sz*.23, sz*.16, sz*.56, .28],  // orta
+    [sz*.58, sz*.29, sz*.14, sz*.51, .22],  // sağ ön
+  ];
+  books3.forEach(function(b){
+    ctx.fillStyle='rgba(255,255,255,'+b[4]+')';
+    ctx.beginPath();ctx.roundRect(b[0],b[1],b[2],b[3],sz*.025);ctx.fill();
+    // Tepe şeridi
+    ctx.fillStyle='rgba(255,255,255,'+(b[4]+.22)+')';
+    ctx.beginPath();ctx.roundRect(b[0],b[1],b[2],sz*.044,sz*.025);ctx.fill();
+  });
+
+  // ── Beyaz kalp ──────────────────────────────────────────────────
+  var hx=sz*.5,hy=sz*.77,hs=sz*.115;
+  ctx.fillStyle='rgba(255,255,255,.92)';
+  ctx.beginPath();
+  ctx.moveTo(hx,hy);
+  ctx.bezierCurveTo(hx,hy-hs*.5, hx-hs,hy-hs*.5, hx-hs,hy-hs*.15);
+  ctx.bezierCurveTo(hx-hs,hy-hs*.8, hx,hy-hs*.8, hx,hy-hs*.3);
+  ctx.bezierCurveTo(hx,hy-hs*.8, hx+hs,hy-hs*.8, hx+hs,hy-hs*.15);
+  ctx.bezierCurveTo(hx+hs,hy-hs*.5, hx,hy-hs*.5, hx,hy);
+  ctx.fill();
+
+  // ── Apple Touch Icon ────────────────────────────────────────────
   try{document.getElementById('touchIcon').href=c.toDataURL('image/png');}catch(e){}
+
+  // ── Web App Manifest ─────────────────────────────────────────────
+  try{
+    var big=document.createElement('canvas');big.width=big.height=512;
+    var bc=big.getContext('2d'),S=512;
+    var BR=S*.22;
+    bc.beginPath();bc.moveTo(BR,0);bc.lineTo(S-BR,0);bc.arcTo(S,0,S,BR,BR);bc.lineTo(S,S-BR);bc.arcTo(S,S,S-BR,S,BR);bc.lineTo(BR,S);bc.arcTo(0,S,0,S-BR,BR);bc.lineTo(0,BR);bc.arcTo(0,0,BR,0,BR);bc.closePath();
+    var BG=bc.createLinearGradient(0,0,S,S);BG.addColorStop(0,'#5ab870');BG.addColorStop(1,'#1e5a34');bc.fillStyle=BG;bc.fill();
+    bc.save();bc.clip();
+    bc.fillStyle='rgba(255,255,255,.06)';bc.beginPath();bc.moveTo(S*.5,S*.06);bc.lineTo(S*.92,S*.42);bc.lineTo(S*.5,S*.42);bc.closePath();bc.fill();
+    bc.fillStyle='rgba(255,255,255,.04)';bc.beginPath();bc.moveTo(S*.08,S*.42);bc.lineTo(S*.5,S*.42);bc.lineTo(S*.5,S*.78);bc.closePath();bc.fill();
+    bc.restore();
+    var Bb=[
+      [S*.28,S*.27,S*.14,S*.52,.18],
+      [S*.42,S*.23,S*.16,S*.56,.28],
+      [S*.58,S*.29,S*.14,S*.51,.22]
+    ];
+    Bb.forEach(function(b){
+      bc.fillStyle='rgba(255,255,255,'+b[4]+')';bc.beginPath();bc.roundRect(b[0],b[1],b[2],b[3],S*.025);bc.fill();
+      bc.fillStyle='rgba(255,255,255,'+(b[4]+.22)+')';bc.beginPath();bc.roundRect(b[0],b[1],b[2],S*.044,S*.025);bc.fill();
+    });
+    var HX=S*.5,HY=S*.77,HS=S*.115;
+    bc.fillStyle='rgba(255,255,255,.92)';bc.beginPath();
+    bc.moveTo(HX,HY);bc.bezierCurveTo(HX,HY-HS*.5,HX-HS,HY-HS*.5,HX-HS,HY-HS*.15);
+    bc.bezierCurveTo(HX-HS,HY-HS*.8,HX,HY-HS*.8,HX,HY-HS*.3);
+    bc.bezierCurveTo(HX,HY-HS*.8,HX+HS,HY-HS*.8,HX+HS,HY-HS*.15);
+    bc.bezierCurveTo(HX+HS,HY-HS*.5,HX,HY-HS*.5,HX,HY);bc.fill();
+    var iconData=big.toDataURL('image/png');
+    var mf={name:settings.libName+"'nin Kütüphanesi",short_name:'Kütüphanem',start_url:'.',display:'standalone',background_color:'#1e5a34',theme_color:'#3d8e5a',orientation:'portrait',icons:[{src:iconData,sizes:'512x512',type:'image/png'}]};
+    var ml=document.querySelector('link[rel="manifest"]');
+    if(!ml){ml=document.createElement('link');ml.rel='manifest';document.head.appendChild(ml);}
+    ml.href='data:application/json;base64,'+btoa(unescape(encodeURIComponent(JSON.stringify(mf))));
+  }catch(e){}
 }
 
 // ─── JSON TAM YEDEK ──────────────────────────────────────────────────────────
