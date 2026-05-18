@@ -380,36 +380,8 @@ select:focus{outline:none;border-color:var(--ac);}
   <button class="nav-item" data-tab="settings"><span class="ni">⚙️</span><span class="nl">Ayarlar</span></button>
 </nav>
 
-<!-- CAMERA SCANNER MODAL -->
-<div class="overlay" id="cameraOverlay">
-  <div class="modal" style="max-height:95vh;">
-    <div class="mhandle"></div>
-    <h2>📷 Barkod Tara</h2>
-    <p style="font-size:12px;color:var(--td);margin-bottom:12px">Kitabın arka kapağındaki barkodu kameraya gösterin. Otomatik algılanacak.</p>
-    <div style="position:relative;background:#000;border-radius:14px;overflow:hidden;margin-bottom:10px;">
-      <video id="cameraVideo" autoplay playsinline muted style="width:100%;display:block;max-height:55vh;object-fit:cover;"></video>
-      <!-- Tarama çerçevesi -->
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-        <div style="width:72%;height:22%;border:2px solid rgba(255,255,255,.8);border-radius:8px;box-shadow:0 0 0 1000px rgba(0,0,0,.4);position:relative;">
-          <div style="position:absolute;top:-1px;left:-1px;width:18px;height:18px;border-top:3px solid #5ab870;border-left:3px solid #5ab870;border-radius:2px 0 0 0;"></div>
-          <div style="position:absolute;top:-1px;right:-1px;width:18px;height:18px;border-top:3px solid #5ab870;border-right:3px solid #5ab870;border-radius:0 2px 0 0;"></div>
-          <div style="position:absolute;bottom:-1px;left:-1px;width:18px;height:18px;border-bottom:3px solid #5ab870;border-left:3px solid #5ab870;border-radius:0 0 0 2px;"></div>
-          <div style="position:absolute;bottom:-1px;right:-1px;width:18px;height:18px;border-bottom:3px solid #5ab870;border-right:3px solid #5ab870;border-radius:0 0 2px 0;"></div>
-          <!-- Tarama çizgisi animasyonu -->
-          <div id="scanLine" style="position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#5ab870,transparent);animation:scanAnim 2s ease-in-out infinite;"></div>
-        </div>
-      </div>
-    </div>
-    <div id="camStatus" style="text-align:center;font-size:13px;color:var(--td);margin-bottom:12px;min-height:20px;"></div>
-    <div class="mfoot">
-      <button class="btn btn-s" id="closeCameraBtn">Kapat</button>
-      <button class="btn btn-s" id="switchCamBtn" style="display:none">🔄 Kamera</button>
-    </div>
-  </div>
-</div>
-<style>
-@keyframes scanAnim{0%{top:10%}50%{top:85%}100%{top:10%}}
-</style>
+<!-- FOTOĞRAF BARKOD INPUT (gizli — 📷 butonu tetikler) -->
+<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
 
 <!-- BOOK MODAL -->
 <div class="overlay" id="bookOverlay">
@@ -749,93 +721,88 @@ document.getElementById('heartWidget').addEventListener('mouseover',function(e){
 document.getElementById('heartWidget').addEventListener('mouseleave',function(){var cur=+document.getElementById('fRating').value;document.querySelectorAll('#heartWidget .heart').forEach(function(x){x.style.color='';x.classList.toggle('on',+x.getAttribute('data-v')<=cur);});});
 
 // ─── KAMERA BARKOD TARAYICI ───────────────────────────────────────────────────
-var _cameraStream=null,_zxingReader=null,_scanActive=false,_facingMode='environment';
-document.getElementById('scanBtn').addEventListener('click',openCameraScanner);
-document.getElementById('closeCameraBtn').addEventListener('click',closeCameraScanner);
-document.getElementById('cameraOverlay').addEventListener('click',function(e){if(e.target===this)closeCameraScanner();});
-document.getElementById('switchCamBtn').addEventListener('click',function(){_facingMode=_facingMode==='environment'?'user':'environment';restartCam();});
+// Fotoğraf tabanlı — file:// protokolünde de çalışır (HTTPS gerekmez)
+document.getElementById('scanBtn').addEventListener('click', function(){
+  document.getElementById('photoInput').click();
+});
 
-async function openCameraScanner(){
-  document.getElementById('cameraOverlay').classList.add('open');
-  document.getElementById('camStatus').textContent='Kamera başlatılıyor…';
-  try{await loadZXing();}catch(e){document.getElementById('camStatus').textContent='❌ Tarayıcı kütüphanesi yüklenemedi';return;}
-  await startCam();
+document.getElementById('photoInput').addEventListener('change', async function(e){
+  var file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  var btn = document.getElementById('scanBtn');
+  btn.textContent='⏳'; btn.disabled=true;
+  showISBNSt('Barkod aranıyor…','warn');
+  try{
+    var isbn = await decodeBarcode(file);
+    if(isbn){
+      if(navigator.vibrate) navigator.vibrate([80,40,80]);
+      document.getElementById('fISBN').value = isbn;
+      showISBNSt('✓ ISBN okundu: '+isbn+' — sorgulanıyor…','warn');
+      fetchISBN(isbn);
+    } else {
+      showISBNSt('❌ Barkod okunamadı. Barkodu daha yakından, net ışıkta çekin.','err');
+    }
+  }catch(err){ showISBNSt('❌ Hata: '+err.message,'err'); }
+  btn.textContent='📷'; btn.disabled=false;
+});
+
+async function decodeBarcode(file){
+  // 1. BarcodeDetector (Android Chrome — anlık, hızlı)
+  if('BarcodeDetector' in window){
+    try{
+      var det = new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e']});
+      var bmp = await createImageBitmap(file);
+      var codes = await det.detect(bmp);
+      for(var i=0;i<codes.length;i++){
+        var v = codes[i].rawValue.replace(/[^0-9Xx]/g,'');
+        if(v.length===13||v.length===10) return v;
+      }
+      return null;
+    }catch(e){ /* BarcodeDetector olmadı, ZXing dene */ }
+  }
+  // 2. ZXing (iOS Safari dahil tüm tarayıcılar)
+  try{ await loadZXing(); }catch(e){ throw new Error('İnternet bağlantısı gerekli (ilk kullanım)'); }
+  if(!window.ZXing) throw new Error('Tarayıcı kütüphanesi yüklenemedi');
+  return new Promise(function(resolve){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var MAX=1400, scale=Math.min(1,MAX/Math.max(img.width,img.height));
+          var cv=document.createElement('canvas');
+          cv.width=Math.round(img.width*scale); cv.height=Math.round(img.height*scale);
+          cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+          var imgEl=new Image();
+          imgEl.onload=function(){
+            try{
+              var zr=new ZXing.BrowserMultiFormatReader();
+              var res=zr.decodeFromImageElement(imgEl);
+              if(res){
+                var v=res.getText().replace(/[^0-9Xx]/g,'');
+                resolve((v.length===13||v.length===10)?v:null);
+              } else { resolve(null); }
+            }catch(e){ resolve(null); }
+          };
+          imgEl.src=cv.toDataURL('image/jpeg',0.92);
+        }catch(e){ resolve(null); }
+      };
+      img.onerror=function(){ resolve(null); };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
-function closeCameraScanner(){
-  _scanActive=false;
-  if(_cameraStream){_cameraStream.getTracks().forEach(function(t){t.stop();});_cameraStream=null;}
-  if(_zxingReader){try{_zxingReader.reset();}catch(e){}}
-  document.getElementById('cameraVideo').srcObject=null;
-  document.getElementById('cameraOverlay').classList.remove('open');
-  document.getElementById('camStatus').textContent='';
-}
+
 function loadZXing(){
   return new Promise(function(resolve,reject){
     if(window.ZXing){resolve();return;}
     var s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.1/umd/index.min.js';
-    s.onload=resolve;s.onerror=function(){reject(new Error('Ağ hatası'));};
+    s.onload=resolve; s.onerror=function(){reject(new Error('Ağ bağlantısı gerekli'));};
     document.head.appendChild(s);
   });
-}
-async function startCam(){
-  try{
-    _cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:_facingMode,width:{ideal:1280},height:{ideal:720}}});
-    var vid=document.getElementById('cameraVideo');
-    vid.srcObject=_cameraStream;await vid.play();
-    var devs=await navigator.mediaDevices.enumerateDevices();
-    var cams=devs.filter(function(d){return d.kind==='videoinput';});
-    document.getElementById('switchCamBtn').style.display=cams.length>1?'block':'none';
-    document.getElementById('camStatus').textContent='Barkodu çerçeveye getirin…';
-    _scanActive=true;startZXing();
-  }catch(err){
-    var msg=err.name==='NotAllowedError'?'Kamera izni reddedildi. Tarayıcı ayarlarından izin verin.':err.name==='NotFoundError'?'Kamera bulunamadı.':'Kamera açılamadı: '+err.message;
-    document.getElementById('camStatus').textContent='❌ '+msg;
-  }
-}
-async function restartCam(){
-  _scanActive=false;
-  if(_cameraStream){_cameraStream.getTracks().forEach(function(t){t.stop();});_cameraStream=null;}
-  if(_zxingReader){try{_zxingReader.reset();}catch(e){}}
-  await startCam();
-}
-function startZXing(){
-  if(!window.ZXing)return;
-  try{
-    _zxingReader=new ZXing.BrowserMultiFormatReader(null,{delayBetweenScanAttempts:150});
-    var vid=document.getElementById('cameraVideo');
-    (function scan(){
-      if(!_scanActive)return;
-      try{
-        var res=_zxingReader.decodeFromVideoElementOnce(vid);
-        if(res&&res.then){
-          res.then(function(r){
-            if(r){onBarcode(r.getText());}else if(_scanActive){setTimeout(scan,150);}
-          }).catch(function(){if(_scanActive)setTimeout(scan,150);});
-        } else {setTimeout(scan,150);}
-      }catch(e){if(_scanActive)setTimeout(scan,150);}
-    })();
-  }catch(e){
-    // Fallback: continuous decode
-    try{
-      _zxingReader=new ZXing.BrowserMultiFormatReader();
-      _zxingReader.decodeFromVideoElement(document.getElementById('cameraVideo'),function(res){
-        if(res&&_scanActive)onBarcode(res.getText());
-      });
-    }catch(e2){document.getElementById('camStatus').textContent='❌ Tarayıcı başlatılamadı';}
-  }
-}
-function onBarcode(code){
-  var clean=code.replace(/[^0-9Xx]/g,'');
-  if(clean.length!==13&&clean.length!==10)return;
-  _scanActive=false;
-  if(navigator.vibrate)navigator.vibrate([80,40,80]);
-  document.getElementById('camStatus').innerHTML='<span style="color:#3a8a28;font-weight:600">✓ ISBN okundu!</span>';
-  setTimeout(function(){
-    closeCameraScanner();
-    document.getElementById('fISBN').value=clean;
-    showISBNSt('Barkod okundu — sorgulanıyor…','warn');
-    fetchISBN(clean);  },700);
 }
 
 // ─── ISBN & COVER ─────────────────────────────────────────────────────────────
