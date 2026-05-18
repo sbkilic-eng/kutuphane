@@ -380,13 +380,44 @@ select:focus{outline:none;border-color:var(--ac);}
   <button class="nav-item" data-tab="settings"><span class="ni">⚙️</span><span class="nl">Ayarlar</span></button>
 </nav>
 
+<!-- CAMERA SCANNER MODAL -->
+<div class="overlay" id="cameraOverlay">
+  <div class="modal" style="max-height:95vh;">
+    <div class="mhandle"></div>
+    <h2>📷 Barkod Tara</h2>
+    <p style="font-size:12px;color:var(--td);margin-bottom:12px">Kitabın arka kapağındaki barkodu kameraya gösterin. Otomatik algılanacak.</p>
+    <div style="position:relative;background:#000;border-radius:14px;overflow:hidden;margin-bottom:10px;">
+      <video id="cameraVideo" autoplay playsinline muted style="width:100%;display:block;max-height:55vh;object-fit:cover;"></video>
+      <!-- Tarama çerçevesi -->
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="width:72%;height:22%;border:2px solid rgba(255,255,255,.8);border-radius:8px;box-shadow:0 0 0 1000px rgba(0,0,0,.4);position:relative;">
+          <div style="position:absolute;top:-1px;left:-1px;width:18px;height:18px;border-top:3px solid #5ab870;border-left:3px solid #5ab870;border-radius:2px 0 0 0;"></div>
+          <div style="position:absolute;top:-1px;right:-1px;width:18px;height:18px;border-top:3px solid #5ab870;border-right:3px solid #5ab870;border-radius:0 2px 0 0;"></div>
+          <div style="position:absolute;bottom:-1px;left:-1px;width:18px;height:18px;border-bottom:3px solid #5ab870;border-left:3px solid #5ab870;border-radius:0 0 0 2px;"></div>
+          <div style="position:absolute;bottom:-1px;right:-1px;width:18px;height:18px;border-bottom:3px solid #5ab870;border-right:3px solid #5ab870;border-radius:0 0 2px 0;"></div>
+          <!-- Tarama çizgisi animasyonu -->
+          <div id="scanLine" style="position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#5ab870,transparent);animation:scanAnim 2s ease-in-out infinite;"></div>
+        </div>
+      </div>
+    </div>
+    <div id="camStatus" style="text-align:center;font-size:13px;color:var(--td);margin-bottom:12px;min-height:20px;"></div>
+    <div class="mfoot">
+      <button class="btn btn-s" id="closeCameraBtn">Kapat</button>
+      <button class="btn btn-s" id="switchCamBtn" style="display:none">🔄 Kamera</button>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes scanAnim{0%{top:10%}50%{top:85%}100%{top:10%}}
+</style>
+
 <!-- BOOK MODAL -->
 <div class="overlay" id="bookOverlay">
   <div class="modal">
     <div class="mhandle"></div>
     <h2 id="mtitle">Kitap Ekle</h2>
     <div class="fg"><label>ISBN ile Otomatik Doldur</label>
-      <div class="isbn-row"><input id="fISBN" type="text" placeholder="ISBN-10 veya ISBN-13" inputmode="numeric"><button class="btn btn-p" id="isbnBtn" type="button">🔍</button></div>
+      <div class="isbn-row"><input id="fISBN" type="text" placeholder="ISBN-10 veya ISBN-13" inputmode="numeric"><button class="btn btn-s" id="scanBtn" type="button" title="Kamerayla tara">📷</button><button class="btn btn-p" id="isbnBtn" type="button">🔍</button></div>
       <div class="isbn-st" id="isbnSt"></div>
     </div>
     <div id="coverPreviewWrap" style="display:none;margin-bottom:10px;"><img id="coverPreview" src="" style="height:80px;border-radius:8px;"></div>
@@ -717,6 +748,96 @@ document.getElementById('heartWidget').addEventListener('click',function(e){var 
 document.getElementById('heartWidget').addEventListener('mouseover',function(e){var h=e.target.closest('.heart');if(!h)return;var v=+h.getAttribute('data-v');document.querySelectorAll('#heartWidget .heart').forEach(function(x){x.style.color=+x.getAttribute('data-v')<=v?'#e05a7a':'';});});
 document.getElementById('heartWidget').addEventListener('mouseleave',function(){var cur=+document.getElementById('fRating').value;document.querySelectorAll('#heartWidget .heart').forEach(function(x){x.style.color='';x.classList.toggle('on',+x.getAttribute('data-v')<=cur);});});
 
+// ─── KAMERA BARKOD TARAYICI ───────────────────────────────────────────────────
+var _cameraStream=null,_zxingReader=null,_scanActive=false,_facingMode='environment';
+document.getElementById('scanBtn').addEventListener('click',openCameraScanner);
+document.getElementById('closeCameraBtn').addEventListener('click',closeCameraScanner);
+document.getElementById('cameraOverlay').addEventListener('click',function(e){if(e.target===this)closeCameraScanner();});
+document.getElementById('switchCamBtn').addEventListener('click',function(){_facingMode=_facingMode==='environment'?'user':'environment';restartCam();});
+
+async function openCameraScanner(){
+  document.getElementById('cameraOverlay').classList.add('open');
+  document.getElementById('camStatus').textContent='Kamera başlatılıyor…';
+  try{await loadZXing();}catch(e){document.getElementById('camStatus').textContent='❌ Tarayıcı kütüphanesi yüklenemedi';return;}
+  await startCam();
+}
+function closeCameraScanner(){
+  _scanActive=false;
+  if(_cameraStream){_cameraStream.getTracks().forEach(function(t){t.stop();});_cameraStream=null;}
+  if(_zxingReader){try{_zxingReader.reset();}catch(e){}}
+  document.getElementById('cameraVideo').srcObject=null;
+  document.getElementById('cameraOverlay').classList.remove('open');
+  document.getElementById('camStatus').textContent='';
+}
+function loadZXing(){
+  return new Promise(function(resolve,reject){
+    if(window.ZXing){resolve();return;}
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.1/umd/index.min.js';
+    s.onload=resolve;s.onerror=function(){reject(new Error('Ağ hatası'));};
+    document.head.appendChild(s);
+  });
+}
+async function startCam(){
+  try{
+    _cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:_facingMode,width:{ideal:1280},height:{ideal:720}}});
+    var vid=document.getElementById('cameraVideo');
+    vid.srcObject=_cameraStream;await vid.play();
+    var devs=await navigator.mediaDevices.enumerateDevices();
+    var cams=devs.filter(function(d){return d.kind==='videoinput';});
+    document.getElementById('switchCamBtn').style.display=cams.length>1?'block':'none';
+    document.getElementById('camStatus').textContent='Barkodu çerçeveye getirin…';
+    _scanActive=true;startZXing();
+  }catch(err){
+    var msg=err.name==='NotAllowedError'?'Kamera izni reddedildi. Tarayıcı ayarlarından izin verin.':err.name==='NotFoundError'?'Kamera bulunamadı.':'Kamera açılamadı: '+err.message;
+    document.getElementById('camStatus').textContent='❌ '+msg;
+  }
+}
+async function restartCam(){
+  _scanActive=false;
+  if(_cameraStream){_cameraStream.getTracks().forEach(function(t){t.stop();});_cameraStream=null;}
+  if(_zxingReader){try{_zxingReader.reset();}catch(e){}}
+  await startCam();
+}
+function startZXing(){
+  if(!window.ZXing)return;
+  try{
+    _zxingReader=new ZXing.BrowserMultiFormatReader(null,{delayBetweenScanAttempts:150});
+    var vid=document.getElementById('cameraVideo');
+    (function scan(){
+      if(!_scanActive)return;
+      try{
+        var res=_zxingReader.decodeFromVideoElementOnce(vid);
+        if(res&&res.then){
+          res.then(function(r){
+            if(r){onBarcode(r.getText());}else if(_scanActive){setTimeout(scan,150);}
+          }).catch(function(){if(_scanActive)setTimeout(scan,150);});
+        } else {setTimeout(scan,150);}
+      }catch(e){if(_scanActive)setTimeout(scan,150);}
+    })();
+  }catch(e){
+    // Fallback: continuous decode
+    try{
+      _zxingReader=new ZXing.BrowserMultiFormatReader();
+      _zxingReader.decodeFromVideoElement(document.getElementById('cameraVideo'),function(res){
+        if(res&&_scanActive)onBarcode(res.getText());
+      });
+    }catch(e2){document.getElementById('camStatus').textContent='❌ Tarayıcı başlatılamadı';}
+  }
+}
+function onBarcode(code){
+  var clean=code.replace(/[^0-9Xx]/g,'');
+  if(clean.length!==13&&clean.length!==10)return;
+  _scanActive=false;
+  if(navigator.vibrate)navigator.vibrate([80,40,80]);
+  document.getElementById('camStatus').innerHTML='<span style="color:#3a8a28;font-weight:600">✓ ISBN okundu!</span>';
+  setTimeout(function(){
+    closeCameraScanner();
+    document.getElementById('fISBN').value=clean;
+    showISBNSt('Barkod okundu — sorgulanıyor…','warn');
+    fetchISBN(clean);  },700);
+}
+
 // ─── ISBN & COVER ─────────────────────────────────────────────────────────────
 document.getElementById('isbnBtn').addEventListener('click',function(){
   var isbn=document.getElementById('fISBN').value.replace(/[-\s]/g,'').trim();
@@ -724,7 +845,37 @@ document.getElementById('isbnBtn').addEventListener('click',function(){
   fetchISBN(isbn);
 });
 document.getElementById('fISBN').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();document.getElementById('isbnBtn').click();}});
-function showISBNSt(msg,t){var el=document.getElementById('isbnSt');el.style.display='block';el.style.color=t==='ok'?'#3a6a28':t==='warn'?'#7a4e18':'#8a2010';el.textContent=msg;}
+function showISBNSt(msg,t){
+  var el=document.getElementById('isbnSt');
+  el.style.display='block';
+  el.style.color=t==='ok'?'#3a6a28':t==='warn'?'#7a4e18':'#8a2010';
+  el.textContent=msg;
+}
+
+// Türk yayınevi/kitap sitesi linkleri
+var TR_PUBLISHERS=[
+  {name:'Kitapyurdu',url:'https://www.kitapyurdu.com/index.php?route=product/search&filter_name='},
+  {name:'D&R',url:'https://www.dr.com.tr/search?q='},
+  {name:'İş Bankası Yay.',url:'https://www.isbanskitap.com/search?q='},
+  {name:'Yapı Kredi Yay.',url:'https://www.ykykultur.com.tr/search?keyword='},
+  {name:'Can Yayınları',url:'https://www.canyayinlari.com/?s='},
+  {name:'Remzi Kitabevi',url:'https://www.remzi.com.tr/search?term='},
+  {name:'İletişim Yay.',url:'https://www.iletisim.com.tr/search?q='},
+  {name:'Pandora',url:'https://www.pandora.com.tr/search?q='},
+];
+
+function showTRLinks(isbn){
+  var el=document.getElementById('isbnSt');
+  var existing=el.textContent;
+  // Mevcut durum mesajını koru, altına Türk kaynak linklerini ekle
+  var linksHtml='<div style="margin-top:8px;font-size:11px;color:var(--td)">Türk kaynaklarda ara:</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">'
+    +TR_PUBLISHERS.map(function(p){
+      return '<a href="'+p.url+isbn+'" target="_blank" rel="noopener" style="padding:3px 9px;background:var(--sf2);border:1px solid var(--bd);border-radius:12px;font-size:10px;color:var(--ac);text-decoration:none;white-space:nowrap">'+p.name+'</a>';
+    }).join('')
+    +'</div>';
+  el.innerHTML='<span>'+existing+'</span>'+linksHtml;
+}
 function fillFromISBN(d){
   if(d.title)document.getElementById('fTitle').value=d.title;
   if(d.author)document.getElementById('fAuthor').value=d.author;
@@ -836,8 +987,10 @@ async function fetchISBN(isbn){
       fillFromISBN(best);
       var hasData=[best.title,best.author,best.pages,best.publisher].filter(Boolean).length;
       showISBNSt('✓ '+best.src+' ('+hasData+'/4 alan dolu'+(best.coverUrl?' · kapak eklendi':'')+')', 'ok');
+      showTRLinks(isbn);
     } else {
-      showISBNSt('❌ Hiçbir kaynakta bulunamadı. Bilgileri manuel girin.','err');
+      showISBNSt('❌ Uluslararası kaynaklarda bulunamadı. Türk yayınevi sitelerini deneyin:','err');
+      showTRLinks(isbn);
     }
   }catch(err){
     showISBNSt('❌ Bağlantı hatası: '+err.message,'err');
