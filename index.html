@@ -741,57 +741,83 @@ document.getElementById('photoInput').addEventListener('change', async function(
       showISBNSt('✓ ISBN okundu: '+isbn+' — sorgulanıyor…','warn');
       fetchISBN(isbn);
     } else {
-      showISBNSt('❌ Barkod okunamadı. Barkodu daha yakından, net ışıkta çekin.','err');
+      showISBNSt('❌ Barkod okunamadı. İpuçları: barkodu doldurarak çekin, düz tutun, iyi ışıkta çekin, titrememeye dikkat edin.','err');
     }
   }catch(err){ showISBNSt('❌ Hata: '+err.message,'err'); }
   btn.textContent='📷'; btn.disabled=false;
 });
 
 async function decodeBarcode(file){
-  // 1. BarcodeDetector (Android Chrome — anlık, hızlı)
+  // 1. BarcodeDetector (Android Chrome — hızlı, yerel)
   if('BarcodeDetector' in window){
     try{
-      var det = new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e']});
-      var bmp = await createImageBitmap(file);
-      var codes = await det.detect(bmp);
+      var det=new BarcodeDetector({formats:['ean_13','ean_8','code_128','upc_a','upc_e']});
+      var bmp=await createImageBitmap(file);
+      var codes=await det.detect(bmp);
       for(var i=0;i<codes.length;i++){
-        var v = codes[i].rawValue.replace(/[^0-9Xx]/g,'');
+        var v=codes[i].rawValue.replace(/[^0-9Xx]/g,'');
         if(v.length===13||v.length===10) return v;
       }
-      return null;
-    }catch(e){ /* BarcodeDetector olmadı, ZXing dene */ }
+      // BarcodeDetector bulamadı, ZXing ile de dene
+    }catch(e){}
   }
-  // 2. ZXing (iOS Safari dahil tüm tarayıcılar)
-  try{ await loadZXing(); }catch(e){ throw new Error('İnternet bağlantısı gerekli (ilk kullanım)'); }
-  if(!window.ZXing) throw new Error('Tarayıcı kütüphanesi yüklenemedi');
+
+  // 2. ZXing — iOS Safari dahil tüm tarayıcılar
+  showISBNSt('ZXing yükleniyor…','warn');
+  try{ await loadZXing(); }
+  catch(e){ throw new Error('İnternet bağlantısı gerekli (ZXing ilk yükleme)'); }
+  if(!window.ZXing) throw new Error('Kütüphane yüklenemedi');
+
+  // Blob URL — decodeFromImageUrl en güvenilir iOS yöntemi
+  var blobUrl=URL.createObjectURL(file);
+  try{
+    var zr=new ZXing.BrowserMultiFormatReader();
+    var result=await zr.decodeFromImageUrl(blobUrl);
+    if(result){
+      var val=result.getText().replace(/[^0-9Xx]/g,'');
+      return (val.length===13||val.length===10)?val:null;
+    }
+    return null;
+  }catch(e){
+    // NotFoundException = barkod bulunamadı (hata değil)
+    if(e.name==='NotFoundException'||e.message==='No MultiFormat Readers were able to detect the code.') return null;
+    // Diğer hatalar: canvas yöntemiyle bir daha dene
+    return await decodeBarcodeCanvas(file);
+  }finally{
+    URL.revokeObjectURL(blobUrl);
+  }
+}
+
+// Yedek: Canvas üzerinden decode (yüksek kontrastlı görüntü)
+async function decodeBarcodeCanvas(file){
+  if(!window.ZXing) return null;
   return new Promise(function(resolve){
-    var reader = new FileReader();
-    reader.onload = function(ev){
-      var img = new Image();
-      img.onload = function(){
+    var fr=new FileReader();
+    fr.onload=function(ev){
+      var img=new Image();
+      img.onload=function(){
         try{
-          var MAX=1400, scale=Math.min(1,MAX/Math.max(img.width,img.height));
+          // Orijinal boyutu koru, sadece 1600px'i geçmesin
+          var MAX=1600,sc=Math.min(1,MAX/Math.max(img.width,img.height));
           var cv=document.createElement('canvas');
-          cv.width=Math.round(img.width*scale); cv.height=Math.round(img.height*scale);
-          cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-          var imgEl=new Image();
-          imgEl.onload=function(){
-            try{
-              var zr=new ZXing.BrowserMultiFormatReader();
-              var res=zr.decodeFromImageElement(imgEl);
-              if(res){
-                var v=res.getText().replace(/[^0-9Xx]/g,'');
-                resolve((v.length===13||v.length===10)?v:null);
-              } else { resolve(null); }
-            }catch(e){ resolve(null); }
-          };
-          imgEl.src=cv.toDataURL('image/jpeg',0.92);
+          cv.width=Math.round(img.width*sc);
+          cv.height=Math.round(img.height*sc);
+          var ctx=cv.getContext('2d');
+          // Kontrast artır — barkod okunabilirliğini yükselt
+          ctx.filter='contrast(1.4) brightness(1.05)';
+          ctx.drawImage(img,0,0,cv.width,cv.height);
+          var zr=new ZXing.BrowserMultiFormatReader();
+          try{
+            var res=zr.decodeFromCanvas(cv);
+            if(res){var v=res.getText().replace(/[^0-9Xx]/g,'');resolve((v.length===13||v.length===10)?v:null);}
+            else resolve(null);
+          }catch(e){ resolve(null); }
         }catch(e){ resolve(null); }
       };
-      img.onerror=function(){ resolve(null); };
+      img.onerror=function(){resolve(null);};
       img.src=ev.target.result;
     };
-    reader.readAsDataURL(file);
+    fr.readAsDataURL(file);
   });
 }
 
