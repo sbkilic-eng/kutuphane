@@ -748,85 +748,122 @@ document.getElementById('photoInput').addEventListener('change', async function(
 });
 
 async function decodeBarcode(file){
-  // 1. BarcodeDetector (Android Chrome — hızlı, yerel)
-  if('BarcodeDetector' in window){
-    try{
-      var det=new BarcodeDetector({formats:['ean_13','ean_8','code_128','upc_a','upc_e']});
-      var bmp=await createImageBitmap(file);
-      var codes=await det.detect(bmp);
-      for(var i=0;i<codes.length;i++){
-        var v=codes[i].rawValue.replace(/[^0-9Xx]/g,'');
-        if(v.length===13||v.length===10) return v;
-      }
-      // BarcodeDetector bulamadı, ZXing ile de dene
-    }catch(e){}
-  }
+  // ── 1. Görseli önce yeniden boyutlandır ──────────────────────────
+  // iPhone fotoğrafları 12MP+ olabilir — küçültmek hem hızlandırır hem başarıyı artırır
+  showISBNSt('Fotoğraf işleniyor…','warn');
+  var smallBlob = await resizeImage(file, 1200);
+  var blobUrl = URL.createObjectURL(smallBlob);
 
-  // 2. ZXing — iOS Safari dahil tüm tarayıcılar
-  showISBNSt('ZXing yükleniyor…','warn');
-  try{ await loadZXing(); }
-  catch(e){ throw new Error('İnternet bağlantısı gerekli (ZXing ilk yükleme)'); }
-  if(!window.ZXing) throw new Error('Kütüphane yüklenemedi');
-
-  // Blob URL — decodeFromImageUrl en güvenilir iOS yöntemi
-  var blobUrl=URL.createObjectURL(file);
   try{
-    var zr=new ZXing.BrowserMultiFormatReader();
-    var result=await zr.decodeFromImageUrl(blobUrl);
-    if(result){
-      var val=result.getText().replace(/[^0-9Xx]/g,'');
-      return (val.length===13||val.length===10)?val:null;
+    // ── 2. BarcodeDetector (Android Chrome — yerel, hızlı) ──────────
+    if('BarcodeDetector' in window){
+      try{
+        var det = new BarcodeDetector({formats:['ean_13','ean_8','code_128','upc_a']});
+        var bmp = await createImageBitmap(smallBlob);
+        var codes = await det.detect(bmp);
+        for(var i=0;i<codes.length;i++){
+          var v = codes[i].rawValue.replace(/[^0-9Xx]/g,'');
+          if(v.length===13||v.length===10) return v;
+        }
+      }catch(e){}
     }
-    return null;
-  }catch(e){
-    // NotFoundException = barkod bulunamadı (hata değil)
-    if(e.name==='NotFoundException'||e.message==='No MultiFormat Readers were able to detect the code.') return null;
-    // Diğer hatalar: canvas yöntemiyle bir daha dene
-    return await decodeBarcodeCanvas(file);
+
+    // ── 3. QuaggaJS — iOS dahil tüm tarayıcılar için en iyi 1D ─────
+    showISBNSt('Barkod taranıyor…','warn');
+    await loadQuagga();
+    var isbn = await decodeWithQuagga(blobUrl);
+    if(isbn) return isbn;
+
+    // ── 4. ZXing — son çare ─────────────────────────────────────────
+    await loadZXing();
+    if(window.ZXing){
+      try{
+        var zr = new ZXing.BrowserMultiFormatReader();
+        var res = await zr.decodeFromImageUrl(blobUrl);
+        if(res){
+          var val = res.getText().replace(/[^0-9Xx]/g,'');
+          if(val.length===13||val.length===10) return val;
+        }
+      }catch(e){}
+    }
+
+    return null; // Hiçbiri bulamadı
+
   }finally{
     URL.revokeObjectURL(blobUrl);
   }
 }
 
-// Yedek: Canvas üzerinden decode (yüksek kontrastlı görüntü)
-async function decodeBarcodeCanvas(file){
-  if(!window.ZXing) return null;
+// Görseli yeniden boyutlandır
+function resizeImage(file, maxPx){
   return new Promise(function(resolve){
-    var fr=new FileReader();
-    fr.onload=function(ev){
-      var img=new Image();
-      img.onload=function(){
-        try{
-          // Orijinal boyutu koru, sadece 1600px'i geçmesin
-          var MAX=1600,sc=Math.min(1,MAX/Math.max(img.width,img.height));
-          var cv=document.createElement('canvas');
-          cv.width=Math.round(img.width*sc);
-          cv.height=Math.round(img.height*sc);
-          var ctx=cv.getContext('2d');
-          // Kontrast artır — barkod okunabilirliğini yükselt
-          ctx.filter='contrast(1.4) brightness(1.05)';
-          ctx.drawImage(img,0,0,cv.width,cv.height);
-          var zr=new ZXing.BrowserMultiFormatReader();
-          try{
-            var res=zr.decodeFromCanvas(cv);
-            if(res){var v=res.getText().replace(/[^0-9Xx]/g,'');resolve((v.length===13||v.length===10)?v:null);}
-            else resolve(null);
-          }catch(e){ resolve(null); }
-        }catch(e){ resolve(null); }
+    var fr = new FileReader();
+    fr.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var sc = Math.min(1, maxPx / Math.max(img.width, img.height));
+        var cv = document.createElement('canvas');
+        cv.width  = Math.round(img.width  * sc);
+        cv.height = Math.round(img.height * sc);
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        cv.toBlob(function(blob){ resolve(blob || file); }, 'image/jpeg', 0.93);
       };
-      img.onerror=function(){resolve(null);};
-      img.src=ev.target.result;
+      img.onerror = function(){ resolve(file); };
+      img.src = e.target.result;
     };
+    fr.onerror = function(){ resolve(file); };
     fr.readAsDataURL(file);
   });
 }
 
+// QuaggaJS kütüphanesini yükle
+function loadQuagga(){
+  return new Promise(function(resolve, reject){
+    if(window.Quagga){ resolve(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js';
+    s.onload = resolve;
+    s.onerror = function(){ reject(new Error('QuaggaJS yüklenemedi')); };
+    document.head.appendChild(s);
+  });
+}
+
+// QuaggaJS ile statik görselden barkod oku
+function decodeWithQuagga(src){
+  return new Promise(function(resolve){
+    if(!window.Quagga){ resolve(null); return; }
+    try{
+      Quagga.decodeSingle({
+        src: src,
+        numOfWorkers: 0,
+        locate: true,
+        inputStream:{ size: 1200 },
+        decoder:{
+          readers: ['ean_reader','ean_8_reader','code_128_reader','upc_reader']
+        }
+      }, function(result){
+        if(result && result.codeResult && result.codeResult.code){
+          var v = result.codeResult.code.replace(/[^0-9Xx]/g,'');
+          resolve((v.length===13||v.length===10) ? v : null);
+        } else {
+          resolve(null);
+        }
+      });
+    }catch(e){ resolve(null); }
+  });
+}
+
+// ZXing kütüphanesini yükle
 function loadZXing(){
-  return new Promise(function(resolve,reject){
-    if(window.ZXing){resolve();return;}
-    var s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.1/umd/index.min.js';
-    s.onload=resolve; s.onerror=function(){reject(new Error('Ağ bağlantısı gerekli'));};
+  return new Promise(function(resolve, reject){
+    if(window.ZXing){ resolve(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.1/umd/index.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
     document.head.appendChild(s);
   });
 }
