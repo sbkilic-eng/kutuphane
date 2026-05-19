@@ -241,6 +241,19 @@ select:focus{outline:none;border-color:var(--ac);}
 .cpick.sel{border-color:var(--tx);transform:scale(1.15);}
 .name-input{width:100%;background:var(--sf);border:1px solid var(--bd);color:var(--tx);padding:10px 12px;border-radius:10px;font-size:15px;font-family:'Georgia',serif;}
 .name-input:focus{outline:none;border-color:var(--ac);}
+/* ── PUNTO BOYUTLARI ─────────────────────────────────────────── */
+[data-fs="s"] body,body[data-fs="s"]{font-size:12px;}
+[data-fs="m"] body,body{font-size:14px;}
+[data-fs="l"] body,html[data-fs="l"] body{font-size:16px;}
+[data-fs="xl"] body,html[data-fs="xl"] body{font-size:18px;}
+[data-fs="l"] .ct{font-size:17px!important;} [data-fs="xl"] .ct{font-size:19px!important;} [data-fs="s"] .ct{font-size:12px!important;}
+[data-fs="l"] .ca,.ct+.ca{} [data-fs="l"] .ca{font-size:13px!important;} [data-fs="xl"] .ca{font-size:15px!important;}
+[data-fs="l"] .cm span{font-size:12px!important;} [data-fs="xl"] .cm span{font-size:14px!important;}
+[data-fs="l"] .blt{font-size:15px!important;} [data-fs="xl"] .blt{font-size:17px!important;}
+[data-fs="l"] .srch,[data-fs="l"] select,[data-fs="l"] .btn{font-size:15px!important;}
+[data-fs="xl"] .srch,[data-fs="xl"] select,[data-fs="xl"] .btn{font-size:17px!important;}
+[data-fs="l"] .fg input,[data-fs="l"] .fg select,[data-fs="l"] .fg textarea{font-size:16px!important;}
+[data-fs="xl"] .fg input,[data-fs="xl"] .fg select,[data-fs="xl"] .fg textarea{font-size:18px!important;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px;}
 @media(min-width:640px){
   main{padding:16px 20px calc(76px + env(safe-area-inset-bottom));}
@@ -323,6 +336,28 @@ select:focus{outline:none;border-color:var(--ac);}
   <div id="tab-settings" class="tab-content">
     <div class="setsec"><h3>👨‍👩‍👧 Aile Üyeleri</h3><div class="member-list" id="memberList"></div><button class="btn btn-p" id="addMemberBtn2">+ Yeni Üye Ekle</button></div>
     <div class="setsec"><h3>🎯 Yıllık Sayfa Hedefleri</h3><p>Her üye için yıllık okuma hedefini sayfa sayısı olarak belirleyin.</p><div id="goalsList"></div></div>
+    <div class="setsec">
+      <h3>🔤 Yazı Boyutu</h3>
+      <p style="margin-bottom:12px">Kitap adları ve genel metin büyüklüğünü ayarlayın.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="fontSizeGrid">
+        <button class="fs-btn" data-fs="s" style="flex:1;padding:12px 8px;border-radius:10px;border:2px solid var(--bd);background:var(--sf2);cursor:pointer;font-family:inherit;">
+          <div style="font-size:11px;font-weight:600;color:var(--td)">Küçük</div>
+          <div style="font-size:11px;color:var(--td);margin-top:2px">Aa</div>
+        </button>
+        <button class="fs-btn" data-fs="m" style="flex:1;padding:12px 8px;border-radius:10px;border:2px solid var(--bd);background:var(--sf2);cursor:pointer;font-family:inherit;">
+          <div style="font-size:13px;font-weight:600;color:var(--td)">Normal</div>
+          <div style="font-size:13px;color:var(--td);margin-top:2px">Aa</div>
+        </button>
+        <button class="fs-btn" data-fs="l" style="flex:1;padding:12px 8px;border-radius:10px;border:2px solid var(--bd);background:var(--sf2);cursor:pointer;font-family:inherit;">
+          <div style="font-size:15px;font-weight:600;color:var(--td)">Büyük</div>
+          <div style="font-size:15px;color:var(--td);margin-top:2px">Aa</div>
+        </button>
+        <button class="fs-btn" data-fs="xl" style="flex:1;padding:12px 8px;border-radius:10px;border:2px solid var(--bd);background:var(--sf2);cursor:pointer;font-family:inherit;">
+          <div style="font-size:17px;font-weight:600;color:var(--td)">Çok Büyük</div>
+          <div style="font-size:17px;color:var(--td);margin-top:2px">Aa</div>
+        </button>
+      </div>
+    </div>
     <div class="setsec" id="syncSec">
       <h3>☁️ Bulut Senkronizasyonu</h3>
 
@@ -457,7 +492,7 @@ var BK='ktp_fam_books_v1',MK='ktp_fam_members_v1',SK='ktp_fam_settings_v1',GK='k
 var EMOJIS=['👧','👦','👩','👨','👵','👴','🧒','👶','📚','⭐','🦋','🐱','🎨','🎵','🚀','🌸'];
 var COLORS=['#e05a7a','#a0672a','#2a7ab8','#3d8e5a','#7a5fc4','#2a9ab8','#d4783a','#c04030','#5a8a40','#7a4898'];
 var MONTHS=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
-var books=[],members=[],settings={libName:'Aile',theme:'krem'},goals={};
+var books=[],members=[],settings={libName:'Aile',theme:'krem',fontSize:'m'},goals={};
 var currentMember='all',editBookId=null,editMemberId=null,recBookId=null;
 var sortKey='title',sortDir=1,statYear='all';
 
@@ -954,16 +989,41 @@ function fillFromISBN(d){
 }
 
 // Her kaynak ayrı bir Promise döner — hata verse de diğerini durdurmaz
+// Türkçe karakter sayısını ölç — daha yüksek = daha iyi
+function trScore(s){
+  return (s||'').split('').filter(function(c){return 'şğüöçıİŞĞÜÖÇ'.indexOf(c)>=0;}).length;
+}
+
 async function queryGoogleBooks(isbn){
-  var r=await fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:'+isbn+'&maxResults=1');
-  if(!r.ok) return null;
-  var d=await r.json();
-  if(!d.totalItems||!d.items) return null;
-  var vi=d.items[0].volumeInfo;
-  var cover=(vi.imageLinks&&(vi.imageLinks.extraLarge||vi.imageLinks.large||vi.imageLinks.medium||vi.imageLinks.thumbnail||''))||'';
-  if(cover) cover=cover.replace('http:','https:');
-  return {title:vi.title||'',author:(vi.authors||[]).join(', '),pages:vi.pageCount||null,
-    publisher:vi.publisher||'',desc:(vi.description||'').replace(/<[^>]+>/g,''),coverUrl:cover,src:'Google Books'};
+  // Önce Türkçe baskıyı dene, yoksa genel sorgu
+  var urls=[
+    'https://www.googleapis.com/books/v1/volumes?q=isbn:'+isbn+'&maxResults=1&langRestrict=tr',
+    'https://www.googleapis.com/books/v1/volumes?q=isbn:'+isbn+'&maxResults=3'
+  ];
+  for(var i=0;i<urls.length;i++){
+    try{
+      var r=await fetch(urls[i]);
+      if(!r.ok) continue;
+      var d=await r.json();
+      if(!d.totalItems||!d.items) continue;
+      // Birden fazla sonuç varsa en fazla Türkçe karakter içereni seç
+      var best=null,bestScore=-1;
+      d.items.forEach(function(item){
+        var vi=item.volumeInfo;
+        var sc=trScore(vi.title||'')+trScore((vi.authors||[]).join(''));
+        if(sc>bestScore){bestScore=sc;best=vi;}
+      });
+      if(!best) best=d.items[0].volumeInfo;
+      var cover=(best.imageLinks&&(best.imageLinks.extraLarge||best.imageLinks.large||best.imageLinks.medium||best.imageLinks.thumbnail||''))||'';
+      if(cover) cover=cover.replace('http:','https:');
+      var result={title:best.title||'',author:(best.authors||[]).join(', '),pages:best.pageCount||null,
+        publisher:best.publisher||'',desc:(best.description||'').replace(/<[^>]+>/g,''),coverUrl:cover,src:'Google Books'};
+      // Türkçe karakter bulunduysa veya ikinci URL'ye geçmeye gerek yoksa döndür
+      if(i===0&&bestScore===0) continue; // Türkçe baskıda Türkçe karakter yok, genel dene
+      return result;
+    }catch(e){}
+  }
+  return null;
 }
 
 async function queryOpenLibraryBibkeys(isbn){
@@ -998,7 +1058,6 @@ async function queryLibraryOfCongress(isbn){
   if(!d.results||!d.results.length) return null;
   var b=d.results[0];
   var title=b.title||'';
-  // LoC başlık genellikle "Başlık / Yazar" şeklinde gelir
   var authorStr='';
   if(b.contributor&&b.contributor.length) authorStr=b.contributor[0].replace(/,\s*author\.?$/i,'').trim();
   else if(title.includes('/')) authorStr=title.split('/').pop().trim();
@@ -1006,27 +1065,29 @@ async function queryLibraryOfCongress(isbn){
     publisher:(b.publisher||[''])[0]||'',desc:'',coverUrl:'',src:'Library of Congress'};
 }
 
-// Sonuçları puana göre sırala — en çok alan kazanır
+// Sonuçları puana göre sırala
 function scoreResult(r){
   if(!r) return 0;
-  return (r.title?3:0)+(r.author?2:0)+(r.pages?2:0)+(r.publisher?1:0)+(r.coverUrl?3:0)+(r.desc?1:0);
+  return (r.title?3:0)+(r.author?2:0)+(r.pages?2:0)+(r.publisher?1:0)+(r.coverUrl?3:0)+(r.desc?1:0)
+    +trScore(r.title||'')+trScore(r.author||''); // Türkçe karakterler bonus puan
 }
 
-// En iyi alanlara göre birleştirilmiş sonuç döner
+// En iyi alanlara göre birleştirilmiş sonuç
 function mergeResults(results){
   var valid=results.filter(Boolean).sort(function(a,b){return scoreResult(b)-scoreResult(a);});
   if(!valid.length) return null;
   var merged=Object.assign({},valid[0]);
-  // Eksik alanları diğer kaynaklardan tamamla
+  // Her alan için Türkçe karakter içereni tercih et
   valid.slice(1).forEach(function(r){
-    if(!merged.title&&r.title) merged.title=r.title;
-    if(!merged.author&&r.author) merged.author=r.author;
-    if(!merged.pages&&r.pages) merged.pages=r.pages;
-    if(!merged.publisher&&r.publisher) merged.publisher=r.publisher;
-    if(!merged.coverUrl&&r.coverUrl) merged.coverUrl=r.coverUrl;
-    if(!merged.desc&&r.desc) merged.desc=r.desc;
+    if(!merged.title && r.title) merged.title=r.title;
+    else if(r.title && trScore(r.title)>trScore(merged.title)) merged.title=r.title; // Türkçe karakterli başlık kazanır
+    if(!merged.author && r.author) merged.author=r.author;
+    else if(r.author && trScore(r.author)>trScore(merged.author)) merged.author=r.author;
+    if(!merged.pages && r.pages) merged.pages=r.pages;
+    if(!merged.publisher && r.publisher) merged.publisher=r.publisher;
+    if(!merged.coverUrl && r.coverUrl) merged.coverUrl=r.coverUrl;
+    if(!merged.desc && r.desc) merged.desc=r.desc;
   });
-  // Hangi kaynakların kullanıldığını kaydet
   merged.src=valid.map(function(r){return r.src;}).join(' + ');
   return merged;
 }
@@ -1378,7 +1439,7 @@ document.querySelectorAll('.nav-item').forEach(function(btn){
     document.getElementById('tab-'+name).classList.add('active');
     btn.classList.add('active');
     if(name==='stats')renderStats();
-    if(name==='settings'){renderMemberList();renderGoalsList();applyThemeUI(settings.theme);}
+    if(name==='settings'){renderMemberList();renderGoalsList();applyThemeUI(settings.theme);applyFontSize(settings.fontSize||'m');}
   });
 });
 
@@ -1386,6 +1447,20 @@ document.querySelectorAll('.nav-item').forEach(function(btn){
 function applyTheme(t){settings.theme=t;document.documentElement.setAttribute('data-theme',t);var c={krem:'#ede5d8',gece:'#1e1a2e',deniz:'#d4eaf4',yaprak:'#d4e8d0'};document.getElementById('themeColor').content=c[t]||c.krem;persistSettings();drawIcon();}
 function applyThemeUI(t){document.querySelectorAll('.theme-opt').forEach(function(el){el.classList.toggle('sel',el.getAttribute('data-theme')===t);});}
 document.querySelectorAll('.theme-opt').forEach(function(opt){opt.addEventListener('click',function(){applyTheme(opt.getAttribute('data-theme'));applyThemeUI(opt.getAttribute('data-theme'));});});
+
+function applyFontSize(fs){
+  settings.fontSize=fs||'m';
+  document.documentElement.setAttribute('data-fs',settings.fontSize);
+  document.querySelectorAll('.fs-btn').forEach(function(btn){
+    var active=btn.getAttribute('data-fs')===settings.fontSize;
+    btn.style.borderColor=active?'var(--ac)':'var(--bd)';
+    btn.style.background=active?'var(--ac)18':'var(--sf2)';
+  });
+  persistSettings();
+}
+document.querySelectorAll('.fs-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){ applyFontSize(btn.getAttribute('data-fs')); });
+});
 function applyLibName(name){settings.libName=name||'Aile';document.getElementById('logoEl').innerHTML=esc(settings.libName)+'<em>Kütüphanesi</em>';document.getElementById('libName').value=settings.libName;document.title=settings.libName+' Kütüphanesi';persistSettings();}
 document.getElementById('saveNameBtn').addEventListener('click',function(){var v=document.getElementById('libName').value.trim();if(!v)return;applyLibName(v);this.textContent='✓ Kaydedildi';setTimeout(function(){document.getElementById('saveNameBtn').textContent='Kaydet';},1500);});
 document.getElementById('libName').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('saveNameBtn').click();});
@@ -1679,8 +1754,6 @@ async function syncPush(silent){
   try{
     await gistRequest('PATCH',gid,{files:{'kutuphane.json':{content:buildSyncPayload()}}});
     if(!silent)showSyncStatus('✓ Yükleme tamam — '+new Date().toLocaleTimeString('tr-TR'),'ok');
-    var el=document.getElementById('syncInfo');
-    if(el)el.innerHTML=(el.innerHTML.split('·')[0]||el.innerHTML)+'· Son yükleme: '+new Date().toLocaleTimeString('tr-TR');
   }catch(err){if(!silent)showSyncStatus('❌ Yükleme hatası: '+err.message,'err');}
 }
 
@@ -1720,7 +1793,7 @@ function syncDisconnect(){
   document.getElementById('ghToken').value='';
   showSyncControls(false);
   document.getElementById('syncStatus').style.display='none';
-  document.getElementById('syncInfo').style.display='none';
+  updateSyncInfo();
 }
 
 function initSyncUI(){
@@ -1747,6 +1820,7 @@ function initSyncUI(){
 // ─── INIT ────────────────────────────────────────────────────────────────────
 loadAll();
 applyTheme(settings.theme);applyThemeUI(settings.theme);applyLibName(settings.libName);
+applyFontSize(settings.fontSize||'m');
 renderMemberBar();renderBooks();renderSeries();
 setTimeout(drawIcon,200);
 initSyncUI();
