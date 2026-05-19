@@ -689,7 +689,8 @@ document.getElementById('saveBook').addEventListener('click',function(){
   var author=document.getElementById('fAuthor').value.trim();
   if(!title){alert('Kitap adı zorunludur.');return;}
   if(!author){alert('Yazar adı zorunludur.');return;}
-  // Mükerrer kitap kontrolü
+  var mid=currentMember!=='all'?currentMember:document.getElementById('fMember').value;
+  // Mükerrer kitap kontrolü (sadece yeni eklemede)
   if(!editBookId){
     var dupe=books.find(function(b){
       return b.memberId===mid
@@ -698,11 +699,10 @@ document.getElementById('saveBook').addEventListener('click',function(){
     });
     if(dupe){
       var dupeMsg='"'+dupe.title+'" bu üyenin kütüphanesinde zaten kayıtlı ('
-        +(dupe.status)+').\nYine de eklemek istiyor musunuz?';
+        +dupe.status+').\nYine de eklemek istiyor musunuz?';
       if(!confirm(dupeMsg)) return;
     }
   }
-  var mid=currentMember!=='all'?currentMember:document.getElementById('fMember').value;
   var prevCover=(editBookId?books.find(function(b){return b.id===editBookId;}):null)||{};
   var data={title:title,author:author,memberId:mid,
     pages:+document.getElementById('fPages').value||null,
@@ -953,7 +953,7 @@ function fillFromISBN(d){
 
 // Her kaynak ayrı bir Promise döner — hata verse de diğerini durdurmaz
 async function queryGoogleBooks(isbn){
-  var r=await fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:'+isbn+'&maxResults=1',{signal:AbortSignal.timeout(7000)});
+  var r=await fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:'+isbn+'&maxResults=1');
   if(!r.ok) return null;
   var d=await r.json();
   if(!d.totalItems||!d.items) return null;
@@ -965,7 +965,7 @@ async function queryGoogleBooks(isbn){
 }
 
 async function queryOpenLibraryBibkeys(isbn){
-  var r=await fetch('https://openlibrary.org/api/books?bibkeys=ISBN:'+isbn+'&format=json&jscmd=data',{signal:AbortSignal.timeout(8000)});
+  var r=await fetch('https://openlibrary.org/api/books?bibkeys=ISBN:'+isbn+'&format=json&jscmd=data');
   if(!r.ok) return null;
   var d=await r.json();
   var bk=d['ISBN:'+isbn];
@@ -977,7 +977,7 @@ async function queryOpenLibraryBibkeys(isbn){
 }
 
 async function queryOpenLibrarySearch(isbn){
-  var r=await fetch('https://openlibrary.org/search.json?isbn='+isbn+'&fields=title,author_name,number_of_pages_median,publisher,first_sentence,cover_i&limit=1',{signal:AbortSignal.timeout(8000)});
+  var r=await fetch('https://openlibrary.org/search.json?isbn='+isbn+'&fields=title,author_name,number_of_pages_median,publisher,first_sentence,cover_i&limit=1');
   if(!r.ok) return null;
   var d=await r.json();
   if(!d.numFound||!d.docs||!d.docs.length) return null;
@@ -990,7 +990,7 @@ async function queryOpenLibrarySearch(isbn){
 }
 
 async function queryLibraryOfCongress(isbn){
-  var r=await fetch('https://www.loc.gov/books/?q=isbn%3A'+isbn+'&fo=json&count=1',{signal:AbortSignal.timeout(8000)});
+  var r=await fetch('https://www.loc.gov/books/?q=isbn%3A'+isbn+'&fo=json&count=1');
   if(!r.ok) return null;
   var d=await r.json();
   if(!d.results||!d.results.length) return null;
@@ -1690,7 +1690,8 @@ async function doSyncPull(silent){
     var url='https://api.github.com/gists/'+gid;
     var hdrs={'Accept':'application/vnd.github.v3+json'};
     if(token)hdrs['Authorization']='token '+token;
-    var r=await fetch(url,{headers:hdrs,signal:AbortSignal.timeout(10000)});
+    var signal=AbortSignal.timeout?AbortSignal.timeout(10000):undefined;
+    var r=await fetch(url,{headers:hdrs,signal:signal});
     if(r.status===404)throw new Error('Gist bulunamadı. Token olmadan sadece public Gist\'ler erişilebilir.');
     if(r.status===401)throw new Error('Token geçersiz');
     if(!r.ok)throw new Error('GitHub API hatası: '+r.status);
