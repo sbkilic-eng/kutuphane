@@ -689,6 +689,19 @@ document.getElementById('saveBook').addEventListener('click',function(){
   var author=document.getElementById('fAuthor').value.trim();
   if(!title){alert('Kitap adı zorunludur.');return;}
   if(!author){alert('Yazar adı zorunludur.');return;}
+  // Mükerrer kitap kontrolü
+  if(!editBookId){
+    var dupe=books.find(function(b){
+      return b.memberId===mid
+        && tr(b.title)===tr(title)
+        && tr(b.author)===tr(author);
+    });
+    if(dupe){
+      var dupeMsg='"'+dupe.title+'" bu üyenin kütüphanesinde zaten kayıtlı ('
+        +(dupe.status)+').\nYine de eklemek istiyor musunuz?';
+      if(!confirm(dupeMsg)) return;
+    }
+  }
   var mid=currentMember!=='all'?currentMember:document.getElementById('fMember').value;
   var prevCover=(editBookId?books.find(function(b){return b.id===editBookId;}):null)||{};
   var data={title:title,author:author,memberId:mid,
@@ -895,6 +908,23 @@ var TR_PUBLISHERS=[
   {name:'Pandora',url:'https://www.pandora.com.tr/search?q='},
 ];
 
+function checkDupeAfterISBN(title, author, mid){
+  if(!title||!author) return;
+  var dupe=books.find(function(b){
+    return b.memberId===mid
+      && tr(b.title)===tr(title)
+      && tr(b.author)===tr(author);
+  });
+  if(dupe){
+    var el=document.getElementById('isbnSt');
+    el.innerHTML=(el.innerHTML||'')
+      +'<div style="margin-top:6px;padding:7px 10px;background:#fdf3e4;border:1px solid #e8c890;border-radius:8px;font-size:11px;color:#7a4e18">'
+      +'⚠️ Bu kitap zaten kütüphanede kayıtlı → <strong>'+esc(dupe.status)+'</strong>'
+      +(dupe.readDate?' ('+esc(dupe.readDate)+')':dupe.year?' ('+dupe.year+')':'')
+      +'</div>';
+  }
+}
+
 function showTRLinks(isbn){
   var el=document.getElementById('isbnSt');
   var existing=el.textContent;
@@ -1018,6 +1048,7 @@ async function fetchISBN(isbn){
       fillFromISBN(best);
       var hasData=[best.title,best.author,best.pages,best.publisher].filter(Boolean).length;
       showISBNSt('✓ '+best.src+' ('+hasData+'/4 alan dolu'+(best.coverUrl?' · kapak eklendi':'')+')', 'ok');
+      checkDupeAfterISBN(best.title, best.author, mid);
       showTRLinks(isbn);
     } else {
       showISBNSt('❌ Uluslararası kaynaklarda bulunamadı. Türk yayınevi sitelerini deneyin:','err');
