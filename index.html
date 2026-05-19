@@ -700,7 +700,8 @@ document.getElementById('saveBook').addEventListener('click',function(){
     rating:+document.getElementById('fRating').value||0,
     note:document.getElementById('fNote').value.trim(),
     publisher:document.getElementById('fPub').value.trim(),
-    coverUrl:prevCover.coverUrl||''};
+    coverUrl: window._pendingCoverUrl || prevCover.coverUrl || ''};
+  window._pendingCoverUrl='';
   if(editBookId){var idx=books.findIndex(function(b){return b.id===editBookId;});books[idx]=Object.assign({},books[idx],data,{updatedAt:new Date().toISOString()});}
   else{data.id=uid();data.addedAt=new Date().toISOString();data.updatedAt=data.addedAt;books.push(data);}
   persist();closeBookModal();renderBooks();renderSeries();
@@ -1028,15 +1029,6 @@ async function fetchISBN(isbn){
   btn.disabled=false; btn.textContent='🔍';
 }
 
-// Patch saveBook to use pending cover
-var _origSave=document.getElementById('saveBook').onclick;
-document.getElementById('saveBook').addEventListener('click',function(){
-  if(window._pendingCoverUrl){
-    var idx=editBookId?books.findIndex(function(b){return b.id===editBookId;}):-1;
-    if(idx>=0)books[idx].coverUrl=window._pendingCoverUrl;
-    window._pendingCoverUrl='';
-  }
-},true);
 
 // ─── NEXT BOOK (Ne Okusam?) ──────────────────────────────────────────────────
 document.getElementById('nextBookBtn').addEventListener('click',openNextModal);
