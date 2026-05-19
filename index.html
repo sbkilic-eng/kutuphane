@@ -908,8 +908,10 @@ var TR_PUBLISHERS=[
   {name:'Pandora',url:'https://www.pandora.com.tr/search?q='},
 ];
 
-function checkDupeAfterISBN(title, author, mid){
-  if(!title||!author) return;
+function checkDupeAfterISBN(title, author){
+  var mid=currentMember!=='all'?currentMember:
+    (document.getElementById('fMember')?document.getElementById('fMember').value:'');
+  if(!title||!author||!mid) return;
   var dupe=books.find(function(b){
     return b.memberId===mid
       && tr(b.title)===tr(title)
@@ -1048,7 +1050,7 @@ async function fetchISBN(isbn){
       fillFromISBN(best);
       var hasData=[best.title,best.author,best.pages,best.publisher].filter(Boolean).length;
       showISBNSt('✓ '+best.src+' ('+hasData+'/4 alan dolu'+(best.coverUrl?' · kapak eklendi':'')+')', 'ok');
-      checkDupeAfterISBN(best.title, best.author, mid);
+      checkDupeAfterISBN(best.title, best.author);
       showTRLinks(isbn);
     } else {
       showISBNSt('❌ Uluslararası kaynaklarda bulunamadı. Türk yayınevi sitelerini deneyin:','err');
