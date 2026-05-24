@@ -438,9 +438,8 @@ select:focus{outline:none;border-color:var(--ac);}
     </div>
     <div class="frow">
       <div class="fg"><label>Durum</label><select id="fStatus"><option value="Okunacak">Okunacak</option><option value="Okunuyor">Okunuyor</option><option value="Okundu">Okundu</option></select></div>
-      <div class="fg"><label>Yıl</label><input id="fYear" type="number" min="1900" max="2100" inputmode="numeric"></div>
     </div>
-    <div class="fg"><label>Okuma Tarihi</label><input id="fDate" type="text" placeholder="GG.AA.YYYY" maxlength="10"></div>
+    <div class="fg"><label>Okuma Tarihi</label><input id="fDate" type="text" placeholder="GG.AA.YYYY" maxlength="10" oninput="onDateInput(this.value)"></div>
     <div class="fg"><label>Puan</label>
       <div class="hearts" id="heartWidget"><span class="heart" data-v="1">♥</span><span class="heart" data-v="2">♥</span><span class="heart" data-v="3">♥</span><span class="heart" data-v="4">♥</span><span class="heart" data-v="5">♥</span></div>
       <input type="hidden" id="fRating" value="0">
@@ -526,6 +525,26 @@ var BADGES=[
 ];
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
+// Kitabın efektif yılı: önce b.year, yoksa readDate'den çıkar
+function bY(b){ return b.year || yearFromDate(b.readDate); }
+
+// Okuma tarihinden yılı çıkar: "15.03.2024" → 2024
+function yearFromDate(dateStr){
+  if(!dateStr) return null;
+  var p=dateStr.split('.');
+  if(p.length===3&&p[2]&&p[2].length===4){
+    var y=parseInt(p[2]);
+    return (y>=1900&&y<=2100)?y:null;
+  }
+  return null;
+}
+// Tarih girilince durumu otomatik "Okundu" yap
+function onDateInput(val){
+  if(yearFromDate(val)){
+    document.getElementById('fStatus').value='Okundu';
+  }
+}
+
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''; }
 function tr(s){return String(s||'').replace(/İ/g,'i').replace(/I/g,'ı').replace(/Ğ/g,'ğ').replace(/Ü/g,'ü').replace(/Ş/g,'ş').replace(/Ö/g,'ö').replace(/Ç/g,'ç').toLocaleLowerCase('tr-TR');}
@@ -546,7 +565,7 @@ function persistMembers(){try{localStorage.setItem(MK,JSON.stringify(members));}
 function persistSettings(){try{localStorage.setItem(SK,JSON.stringify(settings));}catch(e){};}
 function getGoal(mid,year){return(goals[mid]&&goals[mid][String(year)])||0;}
 function setGoal(mid,year,pages){if(!goals[mid])goals[mid]={};if(pages>0)goals[mid][String(year)]=pages;else delete goals[mid][String(year)];try{localStorage.setItem(GK,JSON.stringify(goals));}catch(e){}}
-function getReadPages(mid,year){return books.filter(function(b){return(mid==='all'||b.memberId===mid)&&b.status==='Okundu'&&b.year==year;}).reduce(function(s,b){return s+(+b.pages||0);},0);}
+function getReadPages(mid,year){return books.filter(function(b){return(mid==='all'||b.memberId===mid)&&b.status==='Okundu'&&bY(b)==year;}).reduce(function(s,b){return s+(+b.pages||0);},0);}
 
 // ─── HEADER ──────────────────────────────────────────────────────────────────
 function updateHeader(){
@@ -611,7 +630,12 @@ function renderSeries(){
 // ─── BOOK RENDERING ───────────────────────────────────────────────────────────
 function fillYearFilter(){
   var src=currentMember==='all'?books:books.filter(function(b){return b.memberId===currentMember;});
-  var yrs=[]; src.forEach(function(b){if(b.year&&yrs.indexOf(b.year)<0)yrs.push(b.year);}); yrs.sort(function(a,b){return b-a;});
+  var yrs=[];
+  src.forEach(function(b){
+    var y=b.year||yearFromDate(b.readDate);
+    if(y&&yrs.indexOf(y)<0) yrs.push(y);
+  });
+  yrs.sort(function(a,b){return b-a;});
   var sel=document.getElementById('fYr'),cur=sel.value;
   sel.innerHTML='<option value="">Yıl</option>';
   yrs.forEach(function(y){var o=document.createElement('option');o.value=y;o.textContent=y;if(y==cur)o.selected=true;sel.appendChild(o);});
@@ -706,7 +730,6 @@ function openBookModal(id){
   document.getElementById('fPages').value=b&&b.pages?b.pages:'';
   document.getElementById('fGenre').value=b?(b.genre||''):'';
   document.getElementById('fStatus').value=b?b.status:'Okunacak';
-  document.getElementById('fYear').value=b&&b.year?b.year:'';
   document.getElementById('fDate').value=b?(b.readDate||''):'';
   document.getElementById('fNote').value=b?(b.note||''):'';
   document.getElementById('fPub').value=b?(b.publisher||''):'';
@@ -743,8 +766,8 @@ document.getElementById('saveBook').addEventListener('click',function(){
     pages:+document.getElementById('fPages').value||null,
     genre:document.getElementById('fGenre').value.trim(),
     status:document.getElementById('fStatus').value,
-    year:+document.getElementById('fYear').value||null,
     readDate:document.getElementById('fDate').value.trim(),
+    year:yearFromDate(document.getElementById('fDate').value.trim()),
     rating:+document.getElementById('fRating').value||0,
     note:document.getElementById('fNote').value.trim(),
     publisher:document.getElementById('fPub').value.trim(),
@@ -1318,7 +1341,7 @@ function renderBadges(mid,year){
 function renderBarInEl(el,yrs,rd,color){
   if(!el||!yrs.length){if(el)el.innerHTML='<p style="color:var(--td);font-size:12px">Veri yok.</p>';return;}
   color=color||'var(--ac2)';
-  var data=yrs.map(function(y){var yb=rd.filter(function(b){return b.year==y;});return{y:y,c:yb.length,p:yb.reduce(function(s,b){return s+(+b.pages||0);},0)};}).sort(function(a,b){return b.y-a.y;});
+  var data=yrs.map(function(y){var yb=rd.filter(function(b){return bY(b)==y;});return{y:y,c:yb.length,p:yb.reduce(function(s,b){return s+(+b.pages||0);},0)};}).sort(function(a,b){return b.y-a.y;});
   var mx=Math.max.apply(null,data.map(function(d){return d.c;}));
   el.innerHTML=data.map(function(d){
     var pct=Math.round(d.c/mx*100),inside=pct>28;
@@ -1327,7 +1350,7 @@ function renderBarInEl(el,yrs,rd,color){
   }).join('');
 }
 function renderMonthlyChart(mid,year,color){
-  var rd=books.filter(function(b){return(mid==='all'||b.memberId===mid)&&b.status==='Okundu'&&b.year==year&&b.readDate;});
+  var rd=books.filter(function(b){return(mid==='all'||b.memberId===mid)&&b.status==='Okundu'&&bY(b)==year&&b.readDate;});
   var monthly=new Array(12).fill(0);
   rd.forEach(function(b){var p=b.readDate.split('.');var mo=parseInt(p[1])-1;if(mo>=0&&mo<12)monthly[mo]+=(+b.pages||0);});
   if(!monthly.some(function(v){return v>0;}))return'';
@@ -1349,7 +1372,7 @@ function renderMemberStats(el,mid){
   var m=getMember(mid);if(!m){el.innerHTML='';return;}
   var thisYear=new Date().getFullYear();
   var rd=books.filter(function(b){return b.memberId===mid&&b.status==='Okundu';});
-  var yrs=[]; rd.forEach(function(b){if(b.year&&yrs.indexOf(b.year)<0)yrs.push(b.year);}); yrs.sort(function(a,b){return a-b;});
+  var yrs=[]; rd.forEach(function(b){var y=bY(b);if(y&&yrs.indexOf(y)<0)yrs.push(y);}); yrs.sort(function(a,b){return a-b;});
   var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
     +'<div style="width:36px;height:36px;border-radius:50%;background:'+m.color+'22;display:flex;align-items:center;justify-content:center;font-size:20px;">'+m.emoji+'</div>'
     +'<div style="font-family:Georgia,serif;font-size:17px;font-weight:700;color:'+m.color+'">'+esc(m.name)+'</div>'
@@ -1357,7 +1380,7 @@ function renderMemberStats(el,mid){
   html+=goalProgressHTML(mid,thisYear,m.color);
   html+='<div class="ycs"><button class="yc'+(statYear==='all'?' on':'')+'" data-y="all">Tüm</button>'
     +yrs.map(function(y){return'<button class="yc'+(statYear==y?' on':'')+'" data-y="'+y+'">'+y+'</button>';}).join('')+'</div>';
-  var filt=statYear==='all'?rd:rd.filter(function(b){return b.year==statYear;});
+  var filt=statYear==='all'?rd:rd.filter(function(b){return bY(b)==statYear;});
   var tp=filt.reduce(function(s,b){return s+(+b.pages||0);},0);
   var ap=filt.length?Math.round(tp/filt.length):0;
   var aus=[]; filt.forEach(function(b){if(aus.indexOf(b.author)<0)aus.push(b.author);});
@@ -1382,7 +1405,7 @@ function renderMemberStats(el,mid){
   }).join(''):'<p style="color:var(--td);font-size:13px;padding:8px 0">Bu dönemde okunan kitap yok.</p>';
   // Year table
   html+='<div class="stitle">Yıl Özeti</div><div style="overflow-x:auto"><table class="yt"><thead><tr><th>Yıl</th><th>Kitap</th><th>Sayfa</th><th>Ort.</th></tr></thead><tbody>';
-  yrs.forEach(function(y){var yb=rd.filter(function(b){return b.year==y;});var yp=yb.reduce(function(s,b){return s+(+b.pages||0);},0);html+='<tr><td>'+y+'</td><td>'+yb.length+'</td><td>'+yp.toLocaleString('tr-TR')+'</td><td>'+(yb.length?Math.round(yp/yb.length):'-')+'</td></tr>';});
+  yrs.forEach(function(y){var yb=rd.filter(function(b){return bY(b)==y;});var yp=yb.reduce(function(s,b){return s+(+b.pages||0);},0);html+='<tr><td>'+y+'</td><td>'+yb.length+'</td><td>'+yp.toLocaleString('tr-TR')+'</td><td>'+(yb.length?Math.round(yp/yb.length):'-')+'</td></tr>';});
   html+=(yrs.length?'':'<tr><td colspan="4" style="text-align:center;color:var(--td);padding:14px">Yıl bilgisi olan kitap yok</td></tr>')+'</tbody></table></div>';
   // Badges
   html+='<div class="stitle">🏅 Başarım Rozetleri</div>'+renderBadges(mid,statYear==='all'?thisYear:+statYear);
@@ -1399,10 +1422,10 @@ function renderFamilyStats(el){
   html+='<div class="fam-compare">';
   if(!members.length){html+='<p style="color:var(--td);font-size:13px">Henüz üye yok.</p>';}
   else{
-    var maxRd=Math.max.apply(null,members.map(function(m){return rd.filter(function(b){return b.memberId===m.id&&b.year==thisYear;}).length;}).concat([1]));
+    var maxRd=Math.max.apply(null,members.map(function(m){return rd.filter(function(b){return b.memberId===m.id&&bY(b)==thisYear;}).length;}).concat([1]));
     members.forEach(function(m){
       var mb=books.filter(function(b){return b.memberId===m.id;});
-      var mrd=rd.filter(function(b){return b.memberId===m.id&&b.year==thisYear;});
+      var mrd=rd.filter(function(b){return b.memberId===m.id&&bY(b)==thisYear;});
       var mp=mrd.reduce(function(s,b){return s+(+b.pages||0);},0);
       var pct=Math.round(mrd.length/maxRd*100);
       html+='<div class="fam-row"><div class="fam-head"><span class="fam-name">'+m.emoji+' '+esc(m.name)+'</span><span style="font-size:11px;color:var(--td)">'+mrd.length+' kitap · '+mp.toLocaleString('tr-TR')+' sayfa</span></div>'
