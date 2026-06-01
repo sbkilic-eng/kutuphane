@@ -1419,15 +1419,18 @@ function renderFamilyStats(el){
   var totalPages=rd.reduce(function(s,b){return s+(+b.pages||0);},0);
   var html='<div class="sgrid">'+sc('Toplam Kitap',books.length,'kütüphanede')+sc('Toplam Okundu',rd.length,'adet')+sc('Toplam Sayfa',totalPages.toLocaleString('tr-TR'),'tüm aile')+sc('Üye',members.length,'kişi')+'</div>';
   html+='<div class="stitle">Aile Karşılaştırması — '+thisYear+'</div>';
+  html+='<p style="font-size:11px;color:var(--td);margin-bottom:8px">Çubuk uzunluğu okunan sayfa sayısına göre. Kitap sayısı ve sayfa bilgisi yanında gösteriliyor.</p>';
   html+='<div class="fam-compare">';
   if(!members.length){html+='<p style="color:var(--td);font-size:13px">Henüz üye yok.</p>';}
   else{
-    var maxRd=Math.max.apply(null,members.map(function(m){return rd.filter(function(b){return b.memberId===m.id&&bY(b)==thisYear;}).length;}).concat([1]));
+    var maxPg=Math.max.apply(null,members.map(function(m){
+      return rd.filter(function(b){return b.memberId===m.id&&bY(b)==thisYear;}).reduce(function(s,b){return s+(+b.pages||0);},0);
+    }).concat([1]));
     members.forEach(function(m){
       var mb=books.filter(function(b){return b.memberId===m.id;});
       var mrd=rd.filter(function(b){return b.memberId===m.id&&bY(b)==thisYear;});
       var mp=mrd.reduce(function(s,b){return s+(+b.pages||0);},0);
-      var pct=Math.round(mrd.length/maxRd*100);
+      var pct=Math.round(mp/maxPg*100);
       html+='<div class="fam-row"><div class="fam-head"><span class="fam-name">'+m.emoji+' '+esc(m.name)+'</span><span style="font-size:11px;color:var(--td)">'+mrd.length+' kitap · '+mp.toLocaleString('tr-TR')+' sayfa</span></div>'
         +'<div class="fam-track"><div class="fam-fill" style="width:'+Math.max(pct,2)+'%;background:'+m.color+'"></div></div></div>';
     });
