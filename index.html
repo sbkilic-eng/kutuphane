@@ -254,6 +254,33 @@ select:focus{outline:none;border-color:var(--ac);}
 [data-fs="xl"] .srch,[data-fs="xl"] select,[data-fs="xl"] .btn{font-size:17px!important;}
 [data-fs="l"] .fg input,[data-fs="l"] .fg select,[data-fs="l"] .fg textarea{font-size:16px!important;}
 [data-fs="xl"] .fg input,[data-fs="xl"] .fg select,[data-fs="xl"] .fg textarea{font-size:18px!important;}
+
+/* ── OKUMA İLERLEMESİ ─────────────────────────────────────────── */
+.progress-wrap{margin-top:7px;}
+.progress-bar-bg{background:var(--sf2);border-radius:6px;height:8px;overflow:hidden;margin-bottom:4px;}
+.progress-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--ac2),var(--ac));transition:width .6s ease;}
+.progress-info{display:flex;justify-content:space-between;font-size:10px;color:var(--td);}
+.progress-pct{font-weight:700;color:var(--ac);}
+/* ── OKUMA TAKVİMİ ────────────────────────────────────────────── */
+.cal-wrap{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px;}
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.cal-title{font-family:'Georgia',serif;font-size:14px;font-weight:700;color:var(--tx);}
+.cal-nav{padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf2);cursor:pointer;font-size:12px;font-family:inherit;color:var(--td);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day-lbl{text-align:center;font-size:9px;font-weight:600;color:var(--td);padding:2px 0 6px;}
+.cal-day{aspect-ratio:1;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;cursor:default;position:relative;}
+.cal-day.empty{background:transparent;}
+.cal-day.no-read{background:var(--sf2);color:var(--tl);}
+.cal-day.read-1{background:#c8e6c9;color:#2e7d32;}
+.cal-day.read-2{background:#81c784;color:#1b5e20;}
+.cal-day.read-3{background:#4caf50;color:#fff;}
+.cal-day.read-4{background:#2e7a34;color:#fff;}
+.cal-day.today{outline:2px solid var(--ac);outline-offset:1px;}
+.cal-day .cal-num{font-size:9px;line-height:1;}
+.cal-day .cal-pages{font-size:8px;font-weight:600;line-height:1;margin-top:1px;}
+.cal-legend{display:flex;gap:8px;margin-top:10px;align-items:center;font-size:10px;color:var(--td);flex-wrap:wrap;}
+.cal-legend-box{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+.cal-total{background:var(--sf2);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:12px;color:var(--td);display:flex;justify-content:space-between;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px;}
 @media(min-width:640px){
   main{padding:16px 20px calc(76px + env(safe-area-inset-bottom));}
@@ -417,6 +444,39 @@ select:focus{outline:none;border-color:var(--ac);}
 
 <!-- FOTOĞRAF BARKOD INPUT (gizli — 📷 butonu tetikler) -->
 <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+
+<!-- OKUMA SEANSI MODAL -->
+<div class="overlay" id="sessionOverlay">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <h2>📖 Okuma Seansı</h2>
+    <div id="sessionBookInfo" style="background:var(--sf2);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;">
+      <div id="sessTitle" style="font-weight:600;color:var(--tx);margin-bottom:3px;"></div>
+      <div id="sessProgress" style="font-size:11px;color:var(--td);margin-bottom:6px;"></div>
+      <div class="progress-bar-bg" style="height:6px;"><div id="sessBar" class="progress-bar-fill" style="width:0%"></div></div>
+    </div>
+    <div class="fg">
+      <label>Hangi Sayfadasın? *</label>
+      <input id="sessPage" type="number" min="1" inputmode="numeric" placeholder="Örn: 150">
+      <div id="sessPagesRead" style="font-size:11px;color:var(--ac);margin-top:5px;min-height:16px;"></div>
+    </div>
+    <div class="fg">
+      <label>Tarih</label>
+      <input id="sessDate" type="text" placeholder="GG.AA.YYYY" maxlength="10">
+    </div>
+    <div class="fg" id="sessFinishedWrap" style="display:none;background:#eaf4e2;border:1px solid #b8dca8;border-radius:10px;padding:10px 12px;">
+      <div style="font-size:13px;color:#3a6a28;font-weight:600">🎉 Kitabı bitirdin!</div>
+      <div style="font-size:11px;color:#5a8a50;margin-top:4px">Durumu "Okundu" olarak güncellensin mi?</div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="sessMarkDone" checked style="width:16px;height:16px;"> Evet, okundu olarak işaretle
+      </label>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-s" id="cancelSession">İptal</button>
+      <button class="btn btn-p" id="saveSession">Kaydet</button>
+    </div>
+  </div>
+</div>
 
 <!-- BOOK MODAL -->
 <div class="overlay" id="bookOverlay">
@@ -628,6 +688,120 @@ function renderSeries(){
 }
 
 // ─── BOOK RENDERING ───────────────────────────────────────────────────────────
+// ─── OKUMA İLERLEMESİ & SEANS ────────────────────────────────────────────────
+function progressBar(b){
+  var cp=b.currentPage||0,tp=b.pages||0;if(!tp)return'';
+  var pct=Math.min(Math.round(cp/tp*100),100);
+  return'<div class="progress-wrap">'
+    +'<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:'+pct+'%"></div></div>'
+    +'<div class="progress-info"><span>Sayfa '+cp+' / '+tp+'</span><span class="progress-pct">%'+pct+'</span></div>'
+    +'</div>';
+}
+
+var _sessBookId=null;
+function openSessionModal(id){
+  var b=books.find(function(x){return x.id===id;});if(!b)return;
+  _sessBookId=id;
+  document.getElementById('sessTitle').textContent=b.title;
+  var cp=b.currentPage||0,tp=b.pages||0;
+  var pct=tp?Math.min(Math.round(cp/tp*100),100):0;
+  document.getElementById('sessProgress').textContent='Sayfa '+cp+(tp?' / '+tp:'')+(tp?' (%'+pct+')':'');
+  document.getElementById('sessBar').style.width=pct+'%';
+  document.getElementById('sessPage').value=cp||'';
+  document.getElementById('sessPagesRead').textContent='';
+  document.getElementById('sessFinishedWrap').style.display='none';
+  var now=new Date();
+  document.getElementById('sessDate').value=
+    String(now.getDate()).padStart(2,'0')+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+now.getFullYear();
+  document.getElementById('sessionOverlay').classList.add('open');
+  setTimeout(function(){document.getElementById('sessPage').focus();},80);
+}
+function closeSessionModal(){document.getElementById('sessionOverlay').classList.remove('open');_sessBookId=null;}
+document.getElementById('cancelSession').addEventListener('click',closeSessionModal);
+document.getElementById('sessionOverlay').addEventListener('click',function(e){if(e.target===this)closeSessionModal();});
+document.getElementById('sessPage').addEventListener('input',function(){
+  var b=_sessBookId?books.find(function(x){return x.id===_sessBookId;}):null;if(!b)return;
+  var newP=parseInt(this.value)||0,prevP=b.currentPage||0,read=newP-prevP;
+  var info=document.getElementById('sessPagesRead');
+  if(newP>0&&read>0){info.textContent='Bugün '+read+' sayfa okudun 👏';info.style.color='var(--ac)';}
+  else if(newP>0&&read<=0){info.textContent='Düzeltme mi yapıyorsun?';info.style.color='var(--td)';}
+  else info.textContent='';
+  document.getElementById('sessFinishedWrap').style.display=(b.pages&&newP>=b.pages)?'block':'none';
+});
+document.getElementById('saveSession').addEventListener('click',function(){
+  var b=_sessBookId?books.find(function(x){return x.id===_sessBookId;}):null;if(!b)return;
+  var newP=parseInt(document.getElementById('sessPage').value)||0;
+  if(!newP){alert('Hangi sayfada olduğunu gir.');return;}
+  var prevP=b.currentPage||0,read=Math.max(newP-prevP,0);
+  var dateVal=document.getElementById('sessDate').value.trim();
+  if(!b.sessions)b.sessions=[];
+  var ex=b.sessions.find(function(s){return s.date===dateVal;});
+  if(ex){ex.pagesRead=(ex.pagesRead||0)+read;ex.currentPage=newP;}
+  else{b.sessions.push({date:dateVal,pagesRead:read,currentPage:newP});}
+  b.currentPage=newP;
+  var finished=b.pages&&newP>=b.pages;
+  if(finished&&document.getElementById('sessMarkDone').checked){
+    b.status='Okundu';b.readDate=dateVal;b.year=yearFromDate(dateVal);
+  }
+  persist();closeSessionModal();renderBooks();
+});
+
+// ─── GÜNLÜK TAKVİM ───────────────────────────────────────────────────────────
+var _calYear=new Date().getFullYear(),_calMonth=new Date().getMonth();
+var TR_MON=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+var TR_DAYS=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+
+function buildSessionMap(mid){
+  var map={};
+  var src=mid==='all'?books:books.filter(function(b){return b.memberId===mid;});
+  src.forEach(function(b){(b.sessions||[]).forEach(function(s){
+    map[s.date]=(map[s.date]||0)+(s.pagesRead||0);
+  });});
+  return map;
+}
+
+function renderCalendar(mid){
+  var sessions=buildSessionMap(mid);
+  var today=new Date(),y=_calYear,m=_calMonth;
+  var firstDay=new Date(y,m,1),lastDay=new Date(y,m+1,0);
+  var startDow=(firstDay.getDay()+6)%7;
+  var totalPages=0,daysRead=0;
+  var html='<div class="cal-wrap">'
+    +'<div class="cal-header">'
+      +'<button class="cal-nav" id="calPrev">‹</button>'
+      +'<div class="cal-title">'+TR_MON[m]+' '+y+'</div>'
+      +'<button class="cal-nav" id="calNext">›</button>'
+    +'</div><div class="cal-grid">';
+  TR_DAYS.forEach(function(d){html+='<div class="cal-day-lbl">'+d+'</div>';});
+  for(var i=0;i<startDow;i++) html+='<div class="cal-day empty"></div>';
+  for(var day=1;day<=lastDay.getDate();day++){
+    var dd=String(day).padStart(2,'0'),mm2=String(m+1).padStart(2,'0');
+    var dk=dd+'.'+mm2+'.'+y,pg=sessions[dk]||0;
+    var isToday=today.getDate()===day&&today.getMonth()===m&&today.getFullYear()===y;
+    var cls='cal-day '+(pg===0?'no-read':pg<20?'read-1':pg<40?'read-2':pg<70?'read-3':'read-4')+(isToday?' today':'');
+    if(pg>0){totalPages+=pg;daysRead++;}
+    html+='<div class="'+cls+'" title="'+dk+(pg?' · '+pg+' sayfa':'')+'"><div class="cal-num">'+day+'</div>'+(pg?'<div class="cal-pages">'+pg+'</div>':'')+'</div>';
+  }
+  html+='</div>'
+    +'<div class="cal-legend">'
+      +'<div class="cal-legend-box" style="background:var(--sf2)"></div><span>0</span>'
+      +'<div class="cal-legend-box" style="background:#c8e6c9"></div><span>1-19s</span>'
+      +'<div class="cal-legend-box" style="background:#81c784"></div><span>20-39s</span>'
+      +'<div class="cal-legend-box" style="background:#4caf50"></div><span>40-69s</span>'
+      +'<div class="cal-legend-box" style="background:#2e7a34"></div><span>70s+</span>'
+    +'</div>'
+    +(totalPages>0?'<div class="cal-total"><span>'+TR_MON[m]+' toplamı</span><span><strong>'+totalPages+'</strong> sayfa · <strong>'+daysRead+'</strong> gün</span></div>':'<div class="cal-total" style="color:var(--tl)">Bu ay henüz okuma seansı girilmemiş.</div>')
+    +'</div>';
+  return html;
+}
+function refreshCalendar(mid){
+  var el=document.getElementById('calContainer');if(!el)return;
+  el.innerHTML=renderCalendar(mid);
+  var prev=document.getElementById('calPrev'),next=document.getElementById('calNext');
+  if(prev)prev.addEventListener('click',function(){_calMonth--;if(_calMonth<0){_calMonth=11;_calYear--;}refreshCalendar(mid);});
+  if(next)next.addEventListener('click',function(){_calMonth++;if(_calMonth>11){_calMonth=0;_calYear++;}refreshCalendar(mid);});
+}
+
 function fillYearFilter(){
   var src=currentMember==='all'?books:books.filter(function(b){return b.memberId===currentMember;});
   var yrs=[];
@@ -687,9 +861,11 @@ function renderBooks(){
         +'</div>'
       +'</div>'
       +(b.note?'<div class="cnote">'+esc(b.note.slice(0,80))+(b.note.length>80?'…':'')+'</div>':'')
+      +(b.status==='Okunuyor'&&b.pages?progressBar(b):'')
       +'<div class="acts">'
         +'<button class="abtn edit-btn">Düzenle</button>'
         +'<button class="abtn del del-btn">Sil</button>'
+        +(b.status==='Okunuyor'?'<button class="abtn sess-btn" style="color:var(--ac);border-color:var(--ac)">📖 Sayfa</button>':'')
         +(members.length>1?'<button class="abtn rec rec-btn">👍 Tavsiye</button>':'')
       +'</div>'
       +'</div>';
@@ -701,6 +877,7 @@ document.getElementById('grid').addEventListener('click',function(e){
   if(e.target.classList.contains('edit-btn'))openBookModal(id);
   if(e.target.classList.contains('del-btn'))delBook(id);
   if(e.target.classList.contains('rec-btn'))openRecModal(id);
+  if(e.target.classList.contains('sess-btn'))openSessionModal(id);
 });
 document.querySelectorAll('.srt').forEach(function(btn){
   btn.addEventListener('click',function(){
@@ -1409,9 +1586,13 @@ function renderMemberStats(el,mid){
   html+=(yrs.length?'':'<tr><td colspan="4" style="text-align:center;color:var(--td);padding:14px">Yıl bilgisi olan kitap yok</td></tr>')+'</tbody></table></div>';
   // Badges
   html+='<div class="stitle">🏅 Başarım Rozetleri</div>'+renderBadges(mid,statYear==='all'?thisYear:+statYear);
+  // Günlük takvim
+  _calYear=new Date().getFullYear();_calMonth=new Date().getMonth();
+  html+='<div class="stitle">📅 Günlük Okuma Takvimi</div><div id="calContainer"></div>';
   el.innerHTML=html;
   renderBarInEl(document.getElementById('mBchart'),yrs,rd,m.color);
   el.querySelectorAll('.yc').forEach(function(btn){btn.addEventListener('click',function(){statYear=btn.getAttribute('data-y');renderStats();});});
+  refreshCalendar(mid);
 }
 function renderFamilyStats(el){
   var thisYear=new Date().getFullYear();
