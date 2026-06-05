@@ -266,9 +266,10 @@ select:focus{outline:none;border-color:var(--ac);}
 .cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
 .cal-title{font-family:'Georgia',serif;font-size:14px;font-weight:700;color:var(--tx);}
 .cal-nav{padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf2);cursor:pointer;font-size:12px;font-family:inherit;color:var(--td);}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;align-items:start;}
-.cal-day-lbl{text-align:center;font-size:9px;font-weight:600;color:var(--td);padding:0 0 4px;}
-.cal-day{height:44px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;cursor:default;position:relative;overflow:hidden;}
+.cal-labels{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;grid-auto-rows:44px;}
+.cal-day-lbl{text-align:center;font-size:9px;font-weight:600;color:var(--td);}
+.cal-day{border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;cursor:default;position:relative;overflow:hidden;}
 .cal-day.empty{background:transparent;}
 .cal-day.no-read{background:var(--sf2);color:var(--tl);}
 .cal-day.read-1{background:#c8e6c9;color:#2e7d32;}
@@ -802,17 +803,22 @@ function renderCalendar(mid){
       +'<button class="cal-nav" onclick="calNav(-1)">‹</button>'
       +'<div class="cal-title">'+TR_MON[m]+' '+y+'</div>'
       +'<button class="cal-nav" onclick="calNav(1)">›</button>'
-    +'</div><div class="cal-grid">';
-  TR_DAYS.forEach(function(d){html+='<div class="cal-day-lbl">'+d+'</div>';});
-  for(var i=0;i<startDow;i++) html+='<div class="cal-day empty"></div>';
+    +'</div>'
+    +'<div class="cal-labels">'+TR_DAYS.map(function(d){return'<div class="cal-day-lbl">'+d+'</div>';}).join('')+'</div>'
+    +'<div class="cal-grid">';
   for(var day=1;day<=lastDay.getDate();day++){
     var dd=String(day).padStart(2,'0'),mm2=String(m+1).padStart(2,'0');
     var dk=dd+'.'+mm2+'.'+y,pg=sessions[dk]||0;
     var isToday=today.getDate()===day&&today.getMonth()===m&&today.getFullYear()===y;
     var cls='cal-day '+(pg===0?'no-read':pg<20?'read-1':pg<40?'read-2':pg<70?'read-3':'read-4')+(isToday?' today':'');
     if(pg>0){totalPages+=pg;daysRead++;}
-    var clickAttr=pg>0?' onclick="showDayDetail(\''+dk+'\')" style="cursor:pointer"':'';
-    html+='<div class="'+cls+'"'+clickAttr+' title="'+dk+(pg?' · '+pg+' sayfa':'')+'"><div class="cal-num">'+day+'</div>'+(pg?'<div class="cal-pages">'+pg+'</div>':'')+'</div>';
+    // Stil oluştur: ilk gün sütun konumu + tıklanabilir imleç
+    var styles=[];
+    if(day===1) styles.push('grid-column-start:'+(startDow+1));
+    if(pg>0) styles.push('cursor:pointer');
+    var styleAttr=styles.length?' style="'+styles.join(';')+'"':'';
+    var clickAttr=pg>0?' onclick="showDayDetail(\''+dk+'\')"':'';
+    html+='<div class="'+cls+'"'+styleAttr+clickAttr+' title="'+dk+(pg?' · '+pg+' sayfa':'')+'"><div class="cal-num">'+day+'</div>'+(pg?'<div class="cal-pages">'+pg+'</div>':'')+'</div>';
   }
   html+='</div>'
     +'<div class="cal-legend">'
