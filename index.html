@@ -266,9 +266,9 @@ select:focus{outline:none;border-color:var(--ac);}
 .cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
 .cal-title{font-family:'Georgia',serif;font-size:14px;font-weight:700;color:var(--tx);}
 .cal-nav{padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf2);cursor:pointer;font-size:12px;font-family:inherit;color:var(--td);}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-.cal-day-lbl{text-align:center;font-size:9px;font-weight:600;color:var(--td);padding:2px 0 6px;}
-.cal-day{aspect-ratio:1;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;cursor:default;position:relative;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;align-items:start;}
+.cal-day-lbl{text-align:center;font-size:9px;font-weight:600;color:var(--td);padding:0 0 4px;}
+.cal-day{height:44px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;cursor:default;position:relative;overflow:hidden;}
 .cal-day.empty{background:transparent;}
 .cal-day.no-read{background:var(--sf2);color:var(--tl);}
 .cal-day.read-1{background:#c8e6c9;color:#2e7d32;}
