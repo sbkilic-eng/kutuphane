@@ -732,13 +732,14 @@ document.getElementById('saveSession').addEventListener('click',function(){
   var b=_sessBookId?books.find(function(x){return x.id===_sessBookId;}):null;if(!b)return;
   var newP=parseInt(document.getElementById('sessPage').value)||0;
   if(!newP){alert('Hangi sayfada olduğunu gir.');return;}
-  var prevP=b.currentPage||0,read=Math.max(newP-prevP,0);
   var dateVal=document.getElementById('sessDate').value.trim();
   if(!b.sessions)b.sessions=[];
+  // Aynı gün için EN SON girilen değeri kabul et (düzeltme)
   var ex=b.sessions.find(function(s){return s.date===dateVal;});
-  if(ex){ex.pagesRead=(ex.pagesRead||0)+read;ex.currentPage=newP;}
-  else{b.sessions.push({date:dateVal,pagesRead:read,currentPage:newP});}
-  b.currentPage=newP;
+  if(ex){ex.currentPage=newP;}
+  else{b.sessions.push({date:dateVal,currentPage:newP,pagesRead:0});}
+  // Tüm seansları tarihe göre sıralayıp sayfa farklarını yeniden hesapla
+  recalcSessions(b);
   var finished=b.pages&&newP>=b.pages;
   if(finished&&document.getElementById('sessMarkDone').checked){
     b.status='Okundu';b.readDate=dateVal;b.year=yearFromDate(dateVal);
@@ -746,11 +747,29 @@ document.getElementById('saveSession').addEventListener('click',function(){
   persist();closeSessionModal();renderBooks();
 });
 
+// Tarih sırasına göre seansları yeniden hesapla — düzeltmeleri doğru yansıtır
+function parseDMY(d){
+  var p=(d||'').split('.');
+  if(p.length!==3)return 0;
+  return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0])).getTime()||0;
+}
+function recalcSessions(b){
+  if(!b.sessions||!b.sessions.length){b.currentPage=0;return;}
+  b.sessions.sort(function(a,c){return parseDMY(a.date)-parseDMY(c.date);});
+  var prev=0;
+  b.sessions.forEach(function(s){
+    s.pagesRead=Math.max((s.currentPage||0)-prev,0);
+    prev=s.currentPage||0;
+  });
+  b.currentPage=b.sessions[b.sessions.length-1].currentPage||0;
+}
+
 // ─── GÜNLÜK TAKVİM ───────────────────────────────────────────────────────────
-var _calYear=new Date().getFullYear(),_calMonth=new Date().getMonth();
+var _calYear=new Date().getFullYear(),_calMonth=new Date().getMonth(),_calMid='all';
 var TR_MON=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 var TR_DAYS=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 
+// Tarih → toplam sayfa
 function buildSessionMap(mid){
   var map={};
   var src=mid==='all'?books:books.filter(function(b){return b.memberId===mid;});
@@ -759,8 +778,20 @@ function buildSessionMap(mid){
   });});
   return map;
 }
+// Tarih → [{title, pages}] (gün detayı için)
+function buildSessionDetail(mid){
+  var map={};
+  var src=mid==='all'?books:books.filter(function(b){return b.memberId===mid;});
+  src.forEach(function(b){(b.sessions||[]).forEach(function(s){
+    if((s.pagesRead||0)<=0)return;
+    if(!map[s.date])map[s.date]=[];
+    map[s.date].push({title:b.title,pages:s.pagesRead,member:getMember(b.memberId)});
+  });});
+  return map;
+}
 
 function renderCalendar(mid){
+  _calMid=mid;
   var sessions=buildSessionMap(mid);
   var today=new Date(),y=_calYear,m=_calMonth;
   var firstDay=new Date(y,m,1),lastDay=new Date(y,m+1,0);
@@ -768,9 +799,9 @@ function renderCalendar(mid){
   var totalPages=0,daysRead=0;
   var html='<div class="cal-wrap">'
     +'<div class="cal-header">'
-      +'<button class="cal-nav" id="calPrev">‹</button>'
+      +'<button class="cal-nav" onclick="calNav(-1)">‹</button>'
       +'<div class="cal-title">'+TR_MON[m]+' '+y+'</div>'
-      +'<button class="cal-nav" id="calNext">›</button>'
+      +'<button class="cal-nav" onclick="calNav(1)">›</button>'
     +'</div><div class="cal-grid">';
   TR_DAYS.forEach(function(d){html+='<div class="cal-day-lbl">'+d+'</div>';});
   for(var i=0;i<startDow;i++) html+='<div class="cal-day empty"></div>';
@@ -780,7 +811,8 @@ function renderCalendar(mid){
     var isToday=today.getDate()===day&&today.getMonth()===m&&today.getFullYear()===y;
     var cls='cal-day '+(pg===0?'no-read':pg<20?'read-1':pg<40?'read-2':pg<70?'read-3':'read-4')+(isToday?' today':'');
     if(pg>0){totalPages+=pg;daysRead++;}
-    html+='<div class="'+cls+'" title="'+dk+(pg?' · '+pg+' sayfa':'')+'"><div class="cal-num">'+day+'</div>'+(pg?'<div class="cal-pages">'+pg+'</div>':'')+'</div>';
+    var clickAttr=pg>0?' onclick="showDayDetail(\''+dk+'\')" style="cursor:pointer"':'';
+    html+='<div class="'+cls+'"'+clickAttr+' title="'+dk+(pg?' · '+pg+' sayfa':'')+'"><div class="cal-num">'+day+'</div>'+(pg?'<div class="cal-pages">'+pg+'</div>':'')+'</div>';
   }
   html+='</div>'
     +'<div class="cal-legend">'
@@ -790,16 +822,44 @@ function renderCalendar(mid){
       +'<div class="cal-legend-box" style="background:#4caf50"></div><span>40-69s</span>'
       +'<div class="cal-legend-box" style="background:#2e7a34"></div><span>70s+</span>'
     +'</div>'
-    +(totalPages>0?'<div class="cal-total"><span>'+TR_MON[m]+' toplamı</span><span><strong>'+totalPages+'</strong> sayfa · <strong>'+daysRead+'</strong> gün</span></div>':'<div class="cal-total" style="color:var(--tl)">Bu ay henüz okuma seansı girilmemiş.</div>')
+    +'<div id="dayDetail" style="display:none;margin-top:10px;"></div>'
+    +(totalPages>0?'<div class="cal-total"><span>'+TR_MON[m]+' toplamı</span><span><strong>'+totalPages+'</strong> sayfa · <strong>'+daysRead+'</strong> gün</span></div>':'<div class="cal-total" style="color:var(--tl)">Bu ay henüz okuma seansı yok.</div>')
     +'</div>';
   return html;
 }
+
+// Ay değiştirme — global onclick ile güvenilir
+window.calNav=function(dir){
+  _calMonth+=dir;
+  if(_calMonth<0){_calMonth=11;_calYear--;}
+  if(_calMonth>11){_calMonth=0;_calYear++;}
+  refreshCalendar(_calMid);
+};
+
+// Güne tıklayınca o günkü kitap detayını göster
+window.showDayDetail=function(dateKey){
+  var detail=buildSessionDetail(_calMid);
+  var items=detail[dateKey]||[];
+  var el=document.getElementById('dayDetail');
+  if(!el)return;
+  if(!items.length){el.style.display='none';return;}
+  var total=items.reduce(function(s,i){return s+i.pages;},0);
+  el.style.display='block';
+  el.innerHTML='<div style="background:var(--sf2);border-radius:10px;padding:11px 13px;">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:8px;display:flex;justify-content:space-between;">'
+      +'<span>📅 '+dateKey+'</span><span style="color:var(--ac)">'+total+' sayfa</span></div>'
+    +items.map(function(it){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid var(--bd);font-size:12px;">'
+        +'<span style="color:var(--tx);flex:1">'+(_calMid==='all'&&it.member?it.member.emoji+' ':'')+esc(it.title)+'</span>'
+        +'<span style="color:var(--td);font-weight:600;white-space:nowrap;margin-left:8px">'+it.pages+' s</span>'
+        +'</div>';
+    }).join('')
+    +'</div>';
+};
+
 function refreshCalendar(mid){
   var el=document.getElementById('calContainer');if(!el)return;
   el.innerHTML=renderCalendar(mid);
-  var prev=document.getElementById('calPrev'),next=document.getElementById('calNext');
-  if(prev)prev.addEventListener('click',function(){_calMonth--;if(_calMonth<0){_calMonth=11;_calYear--;}refreshCalendar(mid);});
-  if(next)next.addEventListener('click',function(){_calMonth++;if(_calMonth>11){_calMonth=0;_calYear++;}refreshCalendar(mid);});
 }
 
 function fillYearFilter(){
@@ -1569,7 +1629,16 @@ function renderMemberStats(el,mid){
   html+=renderMonthlyChart(mid,chartYear,m.color);
   // Yearly bar
   html+='<div class="stitle">Yıllara Göre Okuma</div><p style="font-size:11px;color:var(--td);margin-bottom:8px">Her çubuk o yılın okunan kitap sayısını ve toplam sayfasını gösterir.</p><div class="bwrap"><div id="mBchart" class="bchart"></div></div>';
-  // Book list
+  // Günlük takvim (ÜST KISIMDA)
+  _calYear=new Date().getFullYear();_calMonth=new Date().getMonth();
+  html+='<div class="stitle">📅 Günlük Okuma Takvimi</div><div id="calContainer"></div>';
+  // Başarım rozetleri (ÜST KISIMDA)
+  html+='<div class="stitle">🏅 Başarım Rozetleri</div>'+renderBadges(mid,statYear==='all'?thisYear:+statYear);
+  // Yıl özeti (ÜST KISIMDA)
+  html+='<div class="stitle">Yıl Özeti</div><div style="overflow-x:auto"><table class="yt"><thead><tr><th>Yıl</th><th>Kitap</th><th>Sayfa</th><th>Ort.</th></tr></thead><tbody>';
+  yrs.forEach(function(y){var yb=rd.filter(function(b){return bY(b)==y;});var yp=yb.reduce(function(s,b){return s+(+b.pages||0);},0);html+='<tr><td>'+y+'</td><td>'+yb.length+'</td><td>'+yp.toLocaleString('tr-TR')+'</td><td>'+(yb.length?Math.round(yp/yb.length):'-')+'</td></tr>';});
+  html+=(yrs.length?'':'<tr><td colspan="4" style="text-align:center;color:var(--td);padding:14px">Yıl bilgisi olan kitap yok</td></tr>')+'</tbody></table></div>';
+  // Okunan kitaplar listesi (EN ALTTA)
   var ttl=statYear==='all'?'Tüm Okunanlar':statYear+' Yılında Okunanlar';
   html+='<div class="stitle">'+ttl+'</div>';
   var sf=filt.slice().sort(function(a,b){return(b.pages||0)-(a.pages||0);});
@@ -1580,15 +1649,6 @@ function renderMemberStats(el,mid){
       +'<div class="bla">'+esc(b.author)+(ds?' · '+esc(ds):'')+'</div></div>'
       +(b.pages?'<div class="blp">'+b.pages+'s</div>':'')+'</div>';
   }).join(''):'<p style="color:var(--td);font-size:13px;padding:8px 0">Bu dönemde okunan kitap yok.</p>';
-  // Year table
-  html+='<div class="stitle">Yıl Özeti</div><div style="overflow-x:auto"><table class="yt"><thead><tr><th>Yıl</th><th>Kitap</th><th>Sayfa</th><th>Ort.</th></tr></thead><tbody>';
-  yrs.forEach(function(y){var yb=rd.filter(function(b){return bY(b)==y;});var yp=yb.reduce(function(s,b){return s+(+b.pages||0);},0);html+='<tr><td>'+y+'</td><td>'+yb.length+'</td><td>'+yp.toLocaleString('tr-TR')+'</td><td>'+(yb.length?Math.round(yp/yb.length):'-')+'</td></tr>';});
-  html+=(yrs.length?'':'<tr><td colspan="4" style="text-align:center;color:var(--td);padding:14px">Yıl bilgisi olan kitap yok</td></tr>')+'</tbody></table></div>';
-  // Badges
-  html+='<div class="stitle">🏅 Başarım Rozetleri</div>'+renderBadges(mid,statYear==='all'?thisYear:+statYear);
-  // Günlük takvim
-  _calYear=new Date().getFullYear();_calMonth=new Date().getMonth();
-  html+='<div class="stitle">📅 Günlük Okuma Takvimi</div><div id="calContainer"></div>';
   el.innerHTML=html;
   renderBarInEl(document.getElementById('mBchart'),yrs,rd,m.color);
   el.querySelectorAll('.yc').forEach(function(btn){btn.addEventListener('click',function(){statYear=btn.getAttribute('data-y');renderStats();});});
