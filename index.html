@@ -626,13 +626,27 @@ function loadAll(){
   try{var r4=localStorage.getItem(GK);if(r4)goals=JSON.parse(r4);}catch(e){}
 }
 function persist(){try{localStorage.setItem(BK,JSON.stringify(books));}catch(e){}updateHeader();scheduleSyncPush();}
-var _syncTimer=null;
+var _syncTimer=null,_syncPending=false;
 function scheduleSyncPush(){
   if(!getSyncToken()||!getSyncGistId())return;
+  _syncPending=true;
   clearTimeout(_syncTimer);
-  // Planner Pro gibi: değişiklikten 30 saniye sonra buluta yükle
-  _syncTimer=setTimeout(function(){syncPush(true);},30000);
+  // Değişiklikten 5 saniye sonra buluta yükle (arka arkaya değişiklikleri toplar)
+  _syncTimer=setTimeout(function(){_syncPending=false;syncPush(true);},5000);
 }
+// Uygulama kapanırken / arka plana alınırken bekleyen değişikliği hemen yükle
+function flushSyncNow(){
+  if(_syncPending&&getSyncToken()&&getSyncGistId()){
+    _syncPending=false;
+    clearTimeout(_syncTimer);
+    syncPush(true);
+  }
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden')flushSyncNow();
+});
+window.addEventListener('pagehide',flushSyncNow);
+window.addEventListener('beforeunload',flushSyncNow);
 function persistMembers(){try{localStorage.setItem(MK,JSON.stringify(members));}catch(e){};}
 function persistSettings(){try{localStorage.setItem(SK,JSON.stringify(settings));}catch(e){};}
 function getGoal(mid,year){return(goals[mid]&&goals[mid][String(year)])||0;}
@@ -1039,7 +1053,24 @@ document.addEventListener('keydown',function(e){
     if(document.getElementById('memberOverlay').classList.contains('open'))document.getElementById('saveMember').click();
   }
 });
-function delBook(id){var b=books.find(function(x){return x.id===id;});if(!b||!confirm('"'+b.title+'" silinsin mi?'))return;books=books.filter(function(x){return x.id!==id;});persist();renderBooks();renderSeries();}
+function delBook(id){
+  var b=books.find(function(x){return x.id===id;});
+  if(!b||!confirm('"'+b.title+'" silinsin mi?'))return;
+  books=books.filter(function(x){return x.id!==id;});
+  addTombstone(id);
+  persist();renderBooks();renderSeries();
+}
+// Silinen kayıtları işaretle (senkronizasyonda geri gelmesini önler)
+function addTombstone(id){
+  try{
+    var t=JSON.parse(localStorage.getItem('ktp_fam_deleted_v1')||'{}');
+    t[id]=new Date().toISOString();
+    localStorage.setItem('ktp_fam_deleted_v1',JSON.stringify(t));
+  }catch(e){}
+}
+function getTombstones(){
+  try{return JSON.parse(localStorage.getItem('ktp_fam_deleted_v1')||'{}');}catch(e){return {};}
+}
 
 // ─── HEARTS ──────────────────────────────────────────────────────────────────
 document.getElementById('heartWidget').addEventListener('click',function(e){var h=e.target.closest('.heart');if(!h)return;var v=+h.getAttribute('data-v'),cur=+document.getElementById('fRating').value;setHearts(cur===v?0:v);});
@@ -1529,6 +1560,8 @@ function renderMemberList(){
     var m=getMember(b.getAttribute('data-mid'));if(!m)return;
     var cnt=books.filter(function(bk){return bk.memberId===m.id;}).length;
     if(!confirm('"'+m.name+'" silinecek'+(cnt?'. '+cnt+' kitap da silinecek.':'.')+' Emin misiniz?'))return;
+    // Silinen kitapları işaretle
+    books.filter(function(bk){return bk.memberId===m.id;}).forEach(function(bk){addTombstone(bk.id);});
     books=books.filter(function(bk){return bk.memberId!==m.id;});
     members=members.filter(function(x){return x.id!==m.id;});
     persistMembers();persist();if(currentMember===m.id)currentMember='all';
@@ -1870,7 +1903,7 @@ document.getElementById('fileJsonInput').addEventListener('change',function(e){
         setSyncGistId(data.gistId);
         showIR('✓ Gist ID otomatik tanındı. Ayarlar → ☁️ bölümünden senkronizasyonu tamamlayabilirsiniz.','ok');
       }
-      var local={members:members,books:books,goals:goals,libName:settings.libName,theme:settings.theme};
+      var local={members:members,books:books,goals:goals,deleted:getTombstones(),libName:settings.libName,theme:settings.theme};
       var merged=smartMerge(local,data);
       var newBooks=merged.books.length-books.length;
       members=merged.members;books=merged.books;goals=merged.goals;
@@ -1933,13 +1966,15 @@ function setSyncToken(t){try{localStorage.setItem(SYNC_TOKEN_KEY,t);}catch(e){}}
 function setSyncGistId(g){try{localStorage.setItem(SYNC_GIST_KEY,g);}catch(e){}}
 
 function buildSyncPayload(){
-  return JSON.stringify({version:2,exportedAt:new Date().toISOString(),libName:settings.libName,theme:settings.theme,members:members,books:books,goals:goals,gistId:getSyncGistId()},null,0);
+  return JSON.stringify({version:2,exportedAt:new Date().toISOString(),libName:settings.libName,theme:settings.theme,members:members,books:books,goals:goals,deleted:getTombstones(),gistId:getSyncGistId()},null,0);
 }
 
 // Akıllı birleştirme: iki kaynaktan en güncel halleri al
 function smartMerge(local,remote){
   // Üyeler: remote kazanır (nadiren değişir, çakışma az)
   var mergedMembers=remote.members&&remote.members.length?remote.members:local.members;
+  // Silinen kayıtlar: yerel + uzaktaki mezar taşlarını birleştir
+  var tombstones=Object.assign({},getTombstones(),local.deleted||{},remote.deleted||{});
   // Kitaplar: ID bazında, updatedAt'e göre en yeni kazanır
   var bmap={};
   (local.books||[]).forEach(function(b){bmap[b.id]=b;});
@@ -1947,9 +1982,20 @@ function smartMerge(local,remote){
     if(!bmap[b.id]){bmap[b.id]=b;}
     else{var lu=bmap[b.id].updatedAt||bmap[b.id].addedAt||'';var ru=b.updatedAt||b.addedAt||'';if(ru>lu)bmap[b.id]=b;}
   });
+  // Silinmiş kitapları çıkar — ama silindikten SONRA güncellendiyse koru
+  Object.keys(tombstones).forEach(function(id){
+    if(bmap[id]){
+      var bookTime=bmap[id].updatedAt||bmap[id].addedAt||'';
+      var delTime=tombstones[id];
+      // Kitap silme zamanından sonra düzenlenmediyse sil
+      if(bookTime<=delTime) delete bmap[id];
+    }
+  });
+  // Birleşik mezar taşlarını yerel depoya kaydet
+  try{localStorage.setItem('ktp_fam_deleted_v1',JSON.stringify(tombstones));}catch(e){}
   // Hedefler: birleştir
   var mergedGoals=Object.assign({},local.goals||{},remote.goals||{});
-  return{members:mergedMembers,books:Object.values(bmap),goals:mergedGoals,libName:remote.libName||local.libName,theme:remote.theme||local.theme};
+  return{members:mergedMembers,books:Object.values(bmap),goals:mergedGoals,deleted:tombstones,libName:remote.libName||local.libName,theme:remote.theme||local.theme};
 }
 
 function showSyncStatus(msg,type,persist2){
@@ -2073,7 +2119,7 @@ async function doSyncPull(silent){
     var raw=data.files&&data.files['kutuphane.json']&&data.files['kutuphane.json'].content;
     if(!raw)throw new Error('Gist içinde kutuphane.json bulunamadı');
     var remote=JSON.parse(raw);
-    var local={members:members,books:books,goals:goals,libName:settings.libName,theme:settings.theme};
+    var local={members:members,books:books,goals:goals,deleted:getTombstones(),libName:settings.libName,theme:settings.theme};
     var merged=smartMerge(local,remote);
     var addedCount=Math.max(merged.books.length-books.length,0);
     members=merged.members;books=merged.books;goals=merged.goals;
