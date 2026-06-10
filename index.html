@@ -282,6 +282,10 @@ select:focus{outline:none;border-color:var(--ac);}
 .cal-legend{display:flex;gap:8px;margin-top:10px;align-items:center;font-size:10px;color:var(--td);flex-wrap:wrap;}
 .cal-legend-box{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
 .cal-total{background:var(--sf2);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:12px;color:var(--td);display:flex;justify-content:space-between;}
+/* ── TOAST BİLDİRİM ───────────────────────────────────────────── */
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(76px + env(safe-area-inset-bottom));background:var(--card);border:1px solid var(--bd);border-radius:24px;padding:10px 18px;font-size:13px;color:var(--tx);box-shadow:0 4px 20px var(--sh);z-index:400;display:flex;align-items:center;gap:8px;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap;max-width:90vw;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast .toast-icon{font-size:15px;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px;}
 @media(min-width:640px){
   main{padding:16px 20px calc(76px + env(safe-area-inset-bottom));}
@@ -442,6 +446,8 @@ select:focus{outline:none;border-color:var(--ac);}
   <button class="nav-item" data-tab="backup"><span class="ni">💾</span><span class="nl">Yedek</span></button>
   <button class="nav-item" data-tab="settings"><span class="ni">⚙️</span><span class="nl">Ayarlar</span></button>
 </nav>
+
+<div class="toast" id="toast"><span class="toast-icon" id="toastIcon">✓</span><span id="toastMsg"></span></div>
 
 <!-- FOTOĞRAF BARKOD INPUT (gizli — 📷 butonu tetikler) -->
 <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
@@ -621,7 +627,12 @@ function loadAll(){
 }
 function persist(){try{localStorage.setItem(BK,JSON.stringify(books));}catch(e){}updateHeader();scheduleSyncPush();}
 var _syncTimer=null;
-function scheduleSyncPush(){if(!getSyncToken()||!getSyncGistId())return;clearTimeout(_syncTimer);_syncTimer=setTimeout(function(){syncPush(true);},3000);}
+function scheduleSyncPush(){
+  if(!getSyncToken()||!getSyncGistId())return;
+  clearTimeout(_syncTimer);
+  // Planner Pro gibi: değişiklikten 30 saniye sonra buluta yükle
+  _syncTimer=setTimeout(function(){syncPush(true);},30000);
+}
 function persistMembers(){try{localStorage.setItem(MK,JSON.stringify(members));}catch(e){};}
 function persistSettings(){try{localStorage.setItem(SK,JSON.stringify(settings));}catch(e){};}
 function getGoal(mid,year){return(goals[mid]&&goals[mid][String(year)])||0;}
@@ -2021,13 +2032,28 @@ async function syncConnect(){
   btn.disabled=false;btn.textContent='Bağlan';
 }
 
+// ── TOAST BİLDİRİM ───────────────────────────────────────────────────────────
+var _toastTimer=null;
+function showToast(msg,icon){
+  var el=document.getElementById('toast');if(!el)return;
+  document.getElementById('toastIcon').textContent=icon||'✓';
+  document.getElementById('toastMsg').textContent=msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(function(){el.classList.remove('show');},2800);
+}
+
 async function syncPush(silent){
   var token=getSyncToken(),gid=getSyncGistId();
   if(!token||!gid)return;
   try{
     await gistRequest('PATCH',gid,{files:{'kutuphane.json':{content:buildSyncPayload()}}});
+    showToast('GitHub\'a yüklendi','☁️');
     if(!silent)showSyncStatus('✓ Yükleme tamam — '+new Date().toLocaleTimeString('tr-TR'),'ok');
-  }catch(err){if(!silent)showSyncStatus('❌ Yükleme hatası: '+err.message,'err');}
+  }catch(err){
+    showToast('Yükleme başarısız','⚠️');
+    if(!silent)showSyncStatus('❌ Yükleme hatası: '+err.message,'err');
+  }
 }
 
 async function doSyncPull(silent){
@@ -2057,6 +2083,7 @@ async function doSyncPull(silent){
     updateHeader();renderMemberBar();renderBooks();renderSeries();
     applyTheme(settings.theme);applyLibName(settings.libName);
     if(!silent)showSyncStatus('✓ İndirme tamam'+(addedCount>0?' · '+addedCount+' yeni kayıt eklendi':' · Veriler güncel'),'ok');
+    if(addedCount>0)showToast(addedCount+' yeni kayıt indirildi','☁️');
   }catch(err){if(!silent)showSyncStatus('❌ İndirme hatası: '+err.message,'err');}
 }
 
