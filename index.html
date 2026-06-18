@@ -47,7 +47,11 @@ main{padding:12px 12px calc(70px + env(safe-area-inset-bottom));max-width:900px;
 .tab-content{display:none;}.tab-content.active{display:block;}
 /* ── TOOLBAR ──────────────────────────────────────────── */
 .toolbar{display:flex;gap:7px;margin-bottom:11px;flex-wrap:wrap;align-items:center;}
-.srch{flex:1;min-width:120px;background:var(--card);border:1px solid var(--bd);color:var(--tx);padding:9px 12px;border-radius:10px;font-size:13px;font-family:inherit;}
+.srch-wrap{position:relative;flex:1;min-width:120px;display:flex;}
+.srch{flex:1;width:100%;background:var(--card);border:1px solid var(--bd);color:var(--tx);padding:9px 34px 9px 12px;border-radius:10px;font-size:13px;font-family:inherit;}
+.srch-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;border:none;background:var(--sf2);color:var(--td);cursor:pointer;font-size:12px;display:none;align-items:center;justify-content:center;line-height:1;padding:0;}
+.srch-clear.show{display:flex;}
+.srch-clear:active{background:var(--bd);}
 .srch:focus{outline:none;border-color:var(--ac);}
 .srch::placeholder{color:var(--tl);}
 select{background:var(--card);border:1px solid var(--bd);color:var(--tx);padding:9px 10px;border-radius:10px;font-size:12px;font-family:inherit;}
@@ -312,12 +316,21 @@ select:focus{outline:none;border-color:var(--ac);}
   <!-- BOOKS -->
   <div id="tab-books" class="tab-content active">
     <div class="toolbar">
-      <input class="srch" id="srch" type="text" placeholder="🔍 Ara..." oninput="renderBooks()">
+      <div class="srch-wrap"><input class="srch" id="srch" type="text" placeholder="🔍 Ara..." oninput="renderBooks();toggleClearBtn()"><button class="srch-clear" id="srchClear" onclick="clearSearch()" aria-label="Temizle">✕</button></div>
       <select id="fSt" onchange="renderBooks()">
         <option value="">Tümü</option><option value="Okundu">Okundu</option>
         <option value="Okunuyor">Okunuyor</option><option value="Okunacak">Okunacak</option>
       </select>
       <select id="fYr" onchange="renderBooks()"><option value="">Yıl</option></select>
+      <select id="fSrc" onchange="renderBooks()">
+        <option value="">Kaynak</option>
+        <option value="Bende">📗 Bende</option>
+        <option value="Ödünç - Arkadaş">🤝 Ödünç</option>
+        <option value="Okul Kütüphanesi">🏫 Okul</option>
+        <option value="Halk Kütüphanesi">🏛️ Halk Kütüphanesi</option>
+        <option value="E-Kitap">📱 E-Kitap</option>
+        <option value="Diğer">📦 Diğer</option>
+      </select>
       <button class="btn btn-o" id="nextBookBtn" title="Ne Okusam?">🎲</button>
       <button class="btn btn-p" id="addBtn">+ Ekle</button>
     </div>
@@ -512,6 +525,16 @@ select:focus{outline:none;border-color:var(--ac);}
       <input type="hidden" id="fRating" value="0">
     </div>
     <div class="fg"><label>Not</label><textarea id="fNote" placeholder="Bu kitap hakkında…"></textarea></div>
+    <div class="fg"><label>Kaynak / Sahiplik</label>
+      <select id="fSource">
+        <option value="Bende">📗 Bende (kendi kitabım)</option>
+        <option value="Ödünç - Arkadaş">🤝 Ödünç — Arkadaş</option>
+        <option value="Okul Kütüphanesi">🏫 Okul Kütüphanesi</option>
+        <option value="Halk Kütüphanesi">🏛️ Halk Kütüphanesi</option>
+        <option value="E-Kitap">📱 E-Kitap</option>
+        <option value="Diğer">📦 Diğer</option>
+      </select>
+    </div>
     <div class="fg"><label>Yayınevi</label><input id="fPub" type="text" placeholder="Yayınevi"></div>
     <div class="mfoot"><button class="btn btn-s" id="cancelBook">İptal</button><button class="btn btn-p" id="saveBook">Kaydet</button></div>
   </div>
@@ -905,16 +928,33 @@ function fillYearFilter(){
   sel.innerHTML='<option value="">Yıl</option>';
   yrs.forEach(function(y){var o=document.createElement('option');o.value=y;o.textContent=y;if(y==cur)o.selected=true;sel.appendChild(o);});
 }
+function sourceIcon(s){
+  var m={'Bende':'📗','Ödünç - Arkadaş':'🤝 Ödünç','Okul Kütüphanesi':'🏫 Okul','Halk Kütüphanesi':'🏛️ Kütüphane','E-Kitap':'📱 E-Kitap','Diğer':'📦'};
+  return m[s]||s;
+}
+function toggleClearBtn(){
+  var btn=document.getElementById('srchClear');
+  if(btn)btn.classList.toggle('show',!!document.getElementById('srch').value);
+}
+function clearSearch(){
+  document.getElementById('srch').value='';
+  toggleClearBtn();
+  renderBooks();
+  document.getElementById('srch').focus();
+}
+
 function renderBooks(){
   fillYearFilter();
   var q=tr(document.getElementById('srch').value);
   var st=document.getElementById('fSt').value;
   var yr=document.getElementById('fYr').value;
+  var srcFilter=document.getElementById('fSrc').value;
   var src=currentMember==='all'?books:books.filter(function(b){return b.memberId===currentMember;});
   var list=src.filter(function(b){
     if(q&&tr(b.title).indexOf(q)<0&&tr(b.author).indexOf(q)<0)return false;
     if(st&&b.status!==st)return false;
     if(yr&&b.year!=yr)return false;
+    if(srcFilter){ var bs=b.source||'Bende'; if(bs!==srcFilter)return false; }
     return true;
   });
   list.sort(function(a,b){
@@ -947,7 +987,7 @@ function renderBooks(){
         +'<div class="card-body">'
           +'<div class="ch"><div class="ct">'+esc(b.title)+'</div><span class="badge '+bc+'">'+esc(b.status)+'</span></div>'
           +'<div class="ca">'+esc(b.author)+'</div>'
-          +'<div class="cm">'+(b.pages?'<span>📄 '+b.pages+'s</span>':'')+(ds?'<span>📅 '+esc(String(ds))+'</span>':'')+(b.genre?'<span>🏷 '+esc(b.genre)+'</span>':'')+'</div>'
+          +'<div class="cm">'+(b.pages?'<span>📄 '+b.pages+'s</span>':'')+(ds?'<span>📅 '+esc(String(ds))+'</span>':'')+(b.genre?'<span>🏷 '+esc(b.genre)+'</span>':'')+(b.source&&b.source!=='Bende'?'<span>'+sourceIcon(b.source)+'</span>':'')+'</div>'
           +(b.rating?'<div class="crating">'+heartStr(b.rating)+'</div>':'')
         +'</div>'
       +'</div>'
@@ -1001,6 +1041,7 @@ function openBookModal(id){
   document.getElementById('fDate').value=b?(b.readDate||''):'';
   document.getElementById('fNote').value=b?(b.note||''):'';
   document.getElementById('fPub').value=b?(b.publisher||''):'';
+  document.getElementById('fSource').value=b?(b.source||'Bende'):'Bende';
   setHearts(b?(b.rating||0):0);
   var cw=document.getElementById('coverPreviewWrap');
   if(b&&b.coverUrl){document.getElementById('coverPreview').src=b.coverUrl;cw.style.display='block';}else{cw.style.display='none';}
@@ -1039,6 +1080,7 @@ document.getElementById('saveBook').addEventListener('click',function(){
     rating:+document.getElementById('fRating').value||0,
     note:document.getElementById('fNote').value.trim(),
     publisher:document.getElementById('fPub').value.trim(),
+    source:document.getElementById('fSource').value,
     coverUrl: window._pendingCoverUrl || prevCover.coverUrl || ''};
   window._pendingCoverUrl='';
   if(editBookId){var idx=books.findIndex(function(b){return b.id===editBookId;});books[idx]=Object.assign({},books[idx],data,{updatedAt:new Date().toISOString()});}
@@ -1929,8 +1971,8 @@ document.getElementById('fileJsonInput').addEventListener('change',function(e){
 
 // ─── BACKUP ───────────────────────────────────────────────────────────────────
 document.getElementById('expBtn').addEventListener('click',function(){
-  var h=['Kitap Adi','Yazar','Uye','Sayfa','Durum','Yil','Tarih','Puan','Tur','Yayinevi','Not','KapakURL','ID','UyeID'];
-  var rows=books.map(function(b){var m=getMember(b.memberId);return[b.title,b.author,m?m.name:'',b.pages||'',b.status,b.year||'',b.readDate||'',b.rating||'',b.genre||'',b.publisher||'',b.note||'',b.coverUrl||'',b.id,b.memberId||''].map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(',');});
+  var h=['Kitap Adi','Yazar','Uye','Sayfa','Durum','Yil','Tarih','Puan','Tur','Yayinevi','Kaynak','Not','KapakURL','ID','UyeID'];
+  var rows=books.map(function(b){var m=getMember(b.memberId);return[b.title,b.author,m?m.name:'',b.pages||'',b.status,b.year||'',b.readDate||'',b.rating||'',b.genre||'',b.publisher||'',b.source||'Bende',b.note||'',b.coverUrl||'',b.id,b.memberId||''].map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(',');});
   var csv=h.join(',')+'\n'+rows.join('\n');
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=settings.libName+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(a.href);
 });
@@ -1947,7 +1989,7 @@ document.getElementById('fileInput').addEventListener('change',function(e){
         imp.push({id:o.id||uid(),addedAt:new Date().toISOString(),title:o.kitap_adi||o.title||'',author:o.yazar||o.author||'',
           memberId:o.uyeid||o.memberid||'',pages:+o.sayfa||+o.pages||null,status:o.durum||o.status||'Okunacak',
           year:+o.yil||+o.year||null,readDate:o.tarih||o.readDate||'',rating:+o.puan||+o.rating||0,
-          genre:o.tur||o.genre||'',publisher:o.yayinevi||o.publisher||'',note:o.not||o.note||'',coverUrl:o.kapakurl||o.coverUrl||''});}
+          genre:o.tur||o.genre||'',publisher:o.yayinevi||o.publisher||'',source:o.kaynak||o.source||'Bende',note:o.not||o.note||'',coverUrl:o.kapakurl||o.coverUrl||''});}
       if(!imp.length)throw new Error('Geçerli satır bulunamadı');
       if(!confirm(imp.length+' kitap yüklenecek. Devam?'))return;
       books=imp;persist();renderBooks();renderSeries();showIR('✓ '+imp.length+' kitap yüklendi.','ok');
