@@ -287,6 +287,22 @@ select:focus{outline:none;border-color:var(--ac);}
 .cal-legend-box{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
 .cal-total{background:var(--sf2);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:12px;color:var(--td);display:flex;justify-content:space-between;}
 /* ── TOAST BİLDİRİM ───────────────────────────────────────────── */
+/* ── SENKRONİZASYON YÖNERGESİ ─────────────────────────────────── */
+.sync-guide{margin-bottom:14px;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;overflow:hidden;}
+.sync-guide summary{padding:11px 13px;cursor:pointer;font-size:13px;font-weight:600;color:var(--ac);list-style:none;user-select:none;}
+.sync-guide summary::-webkit-details-marker{display:none;}
+.sync-guide summary::after{content:'▾';float:right;transition:transform .2s;}
+.sync-guide[open] summary::after{transform:rotate(180deg);}
+.sync-guide-body{padding:0 13px 13px;font-size:12px;color:var(--td);line-height:1.6;}
+.sync-guide-body a{color:var(--ac);word-break:break-all;}
+.sync-guide-body code{background:var(--bg);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--tx);}
+.guide-step{display:flex;gap:9px;margin-bottom:11px;align-items:flex-start;}
+.guide-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+.guide-divider{border-top:1px solid var(--bd);margin:12px 0;}
+.guide-list{margin:0 0 0 18px;padding:0;}
+.guide-list li{margin-bottom:4px;}
+.guide-faq{margin-bottom:8px;}
+.guide-faq strong{color:var(--tx);}
 .toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(76px + env(safe-area-inset-bottom));background:var(--card);border:1px solid var(--bd);border-radius:24px;padding:10px 18px;font-size:13px;color:var(--tx);box-shadow:0 4px 20px var(--sh);z-index:400;display:flex;align-items:center;gap:8px;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap;max-width:90vw;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .toast .toast-icon{font-size:15px;}
@@ -405,6 +421,37 @@ select:focus{outline:none;border-color:var(--ac);}
     </div>
     <div class="setsec" id="syncSec">
       <h3>☁️ Bulut Senkronizasyonu</h3>
+
+      <!-- YÖNERGE (açılır-kapanır) -->
+      <details class="sync-guide">
+        <summary>📖 Nasıl kurulur? (yönergeyi göster)</summary>
+        <div class="sync-guide-body">
+          <p style="margin-bottom:10px"><strong>Amaç:</strong> Telefon ve bilgisayar arasında kitapları otomatik senkronize etmek. Ücretsiz bir GitHub hesabı yeterli, sunucu gerekmez.</p>
+
+          <div class="guide-step"><span class="guide-num">1</span><div><strong>GitHub hesabı açın</strong> (varsa atlayın)<br><a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a> → e-posta, şifre, kullanıcı adı</div></div>
+
+          <div class="guide-step"><span class="guide-num">2</span><div><strong>Token oluşturun</strong><br><a href="https://github.com/settings/tokens/new?scopes=gist&description=Aile+Kutuphanesi" target="_blank" rel="noopener">Bu bağlantıya tıklayın</a> → "gist" izni zaten seçili gelir → en altta <em>Generate token</em> → çıkan <code>ghp_...</code> kodunu kopyalayın (bir daha gösterilmez!)</div></div>
+
+          <div class="guide-step"><span class="guide-num">3</span><div><strong>Kurucu cihaza bağlanın</strong><br>Aşağıdaki "🔑 Token ile Bağlan" kutusuna token'ı yapıştırın → <em>Bağlan</em>. Yeni bir Gist oluşturulur ve veriler yüklenir.</div></div>
+
+          <div class="guide-step"><span class="guide-num">4</span><div><strong>Diğer cihazları bağlayın</strong><br>İki yol var:<br>• <strong>Token ile (önerilen):</strong> Aynı token'ı diğer cihazda da "🔑 Token ile Bağlan" kutusuna girin → her iki cihaz da yükler ve indirir.<br>• <strong>Gist ID ile:</strong> Bu cihazdaki Gist ID'yi (yukarıda görünür, 📋 ile kopyalanır) diğer cihazda "🔗 Gist ID ile Bağlan" kutusuna yapıştırın → o cihaz sadece indirir.</div></div>
+
+          <div class="guide-divider"></div>
+          <p style="margin-bottom:6px"><strong>Otomatik çalışma:</strong></p>
+          <ul class="guide-list">
+            <li>Değişiklikten <strong>5 saniye sonra</strong> buluta yüklenir</li>
+            <li>Uygulamadan çıkarken bekleyen değişiklik <strong>anında</strong> yüklenir</li>
+            <li>Uygulama açılışında en güncel veri <strong>otomatik indirilir</strong></li>
+            <li>Silinen kitaplar diğer cihazlarda da silinir</li>
+          </ul>
+
+          <div class="guide-divider"></div>
+          <p style="margin-bottom:6px"><strong>Sık sorulanlar:</strong></p>
+          <p class="guide-faq"><strong>Token güvenli mi?</strong> Evet — yalnızca Gist (not defteri) iznine sahip, GitHub hesabınızın geri kalanına erişemez.</p>
+          <p class="guide-faq"><strong>Başka aileler de kullanabilir mi?</strong> Evet — her aile kendi token'ı ve kendi Gist'iyle tamamen ayrı çalışır, veriler karışmaz.</p>
+          <p class="guide-faq"><strong>İki cihaz farklı Gist oluşturdu, ne yapmalıyım?</strong> Birindeki Gist ID'yi kopyalayıp diğerine "🔗 Gist ID ile Bağlan" kutusundan girin, aynı Gist'i kullansınlar.</p>
+        </div>
+      </details>
 
       <!-- ADIM 1: Durum -->
       <div id="syncCurrentStatus" style="margin-bottom:12px;"></div>
