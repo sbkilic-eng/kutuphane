@@ -684,6 +684,35 @@ var BADGES=[
 
 // ─── COVER IMAGE MANAGEMENT ──────────────────────────────────────────────────
 var _currentCoverData=null;
+
+// Resmi canvas ile küçültüp JPEG'e sıkıştırır — telefon kamerası fotoğrafları
+// çok büyük geldiği için (birkaç MB) localStorage kotasını aşıp veri kaybına
+// yol açıyordu. Kapak zaten küçük gösterildiği için 300px genişlik yeterli.
+function compressImage(file,maxWidth,quality){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(evt){
+      var imgEl=new Image();
+      imgEl.onload=function(){
+        var w=imgEl.width,h=imgEl.height;
+        if(w>maxWidth){h=Math.round(h*(maxWidth/w));w=maxWidth;}
+        var canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        var ctx=canvas.getContext('2d');
+        ctx.drawImage(imgEl,0,0,w,h);
+        try{
+          var dataUrl=canvas.toDataURL('image/jpeg',quality||0.75);
+          resolve(dataUrl);
+        }catch(e){reject(e);}
+      };
+      imgEl.onerror=function(){reject(new Error('Resim yüklenemedi'));};
+      imgEl.src=evt.target.result;
+    };
+    reader.onerror=function(){reject(new Error('Dosya okunamadı'));};
+    reader.readAsDataURL(file);
+  });
+}
+
 function setupCoverUpload(){
   var coverInput=document.getElementById('manualCoverInput');
   var cameraInput=document.getElementById('manualCoverCameraInput');
@@ -698,15 +727,21 @@ function setupCoverUpload(){
   
   function handleFile(file){
     if(!file)return;
-    var reader=new FileReader();
-    reader.onload=function(evt){
-      _currentCoverData=evt.target.result;
+    uploadBtn.disabled=true;captureBtn.disabled=true;
+    var origLabel=captureBtn.textContent;
+    captureBtn.textContent='İşleniyor…';
+    compressImage(file,300,0.75).then(function(dataUrl){
+      _currentCoverData=dataUrl;
       img.src=_currentCoverData;
       img.style.display='block';
       placeholder.style.display='none';
       removeBtn.style.display='inline-block';
-    };
-    reader.readAsDataURL(file);
+    }).catch(function(err){
+      alert('Resim işlenemedi: '+err.message);
+    }).finally(function(){
+      uploadBtn.disabled=false;captureBtn.disabled=false;
+      captureBtn.textContent=origLabel;
+    });
   }
   
   uploadBtn.addEventListener('click',function(e){
@@ -773,7 +808,7 @@ function loadAll(){
   try{var r3=localStorage.getItem(SK);if(r3)settings=Object.assign(settings,JSON.parse(r3));}catch(e){}
   try{var r4=localStorage.getItem(GK);if(r4)goals=JSON.parse(r4);}catch(e){}
 }
-function persist(){try{localStorage.setItem(BK,JSON.stringify(books));}catch(e){}updateHeader();scheduleSyncPush();}
+function persist(){try{localStorage.setItem(BK,JSON.stringify(books));}catch(e){alert('⚠️ Kayıt başarısız oldu (depolama alanı dolu olabilir). Son eklenen kapak resmi kaldırılıp tekrar denenebilir.');}updateHeader();scheduleSyncPush();}
 var _syncTimer=null,_syncPending=false;
 function scheduleSyncPush(){
   if(!getSyncToken()||!getSyncGistId())return;
