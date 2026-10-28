@@ -146,6 +146,9 @@ select:focus{outline:none;border-color:var(--ac);}
 .ycs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
 .yc{padding:5px 12px;border-radius:16px;border:1px solid var(--bd);background:transparent;color:var(--td);cursor:pointer;font-size:12px;font-family:inherit;}
 .yc.on{background:var(--ac);color:#fff;border-color:var(--ac);}
+.stat-sort-bar{display:flex;gap:8px;margin-bottom:10px;}
+.stat-sort-bar select{flex:1;padding:7px 10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:12px;font-family:inherit;}
+.stat-sort-bar .btn-s{white-space:nowrap;padding:7px 12px;font-size:12px;}
 .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px;margin-bottom:18px;}
 .sc{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:13px;}
 .scl{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
@@ -651,7 +654,7 @@ var COLORS=['#e05a7a','#a0672a','#2a7ab8','#3d8e5a','#7a5fc4','#2a9ab8','#d4783a
 var MONTHS=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 var books=[],members=[],settings={libName:'Aile',theme:'krem',fontSize:'m'},goals={};
 var currentMember='all',editBookId=null,editMemberId=null,recBookId=null;
-var sortKey='title',sortDir=1,statYear='all';
+var sortKey='title',sortDir=1,statYear='all',statSortKey='date',statSortDir=-1;
 
 // ─── BADGES DEFINITION ───────────────────────────────────────────────────────
 var BADGES=[
@@ -787,6 +790,31 @@ function yearFromDate(dateStr){
     return (y>=1900&&y<=2100)?y:null;
   }
   return null;
+}
+// DD.MM.YYYY -> sıralanabilir sayı (YYYYMMDD), tarih yoksa/geçersizse en küçük değer
+function dateSortVal(dateStr){
+  if(!dateStr)return -1;
+  var p=dateStr.split('.');
+  if(p.length!==3)return -1;
+  var d=parseInt(p[0])||0,mo=parseInt(p[1])||0,y=parseInt(p[2])||0;
+  if(!y)return -1;
+  return y*10000+mo*100+d;
+}
+// İstatistik sayfasındaki "Okunan Kitaplar" listesini seçili kritere göre sıralar
+function sortStatBooks(arr){
+  return arr.sort(function(a,b){
+    var va,vb;
+    switch(statSortKey){
+      case 'title': va=tr(a.title); vb=tr(b.title); break;
+      case 'author': va=tr(a.author); vb=tr(b.author); break;
+      case 'pages': va=+a.pages||0; vb=+b.pages||0; break;
+      case 'rating': va=+a.rating||0; vb=+b.rating||0; break;
+      case 'date': default: va=dateSortVal(a.readDate); vb=dateSortVal(b.readDate); break;
+    }
+    if(va<vb)return -statSortDir;
+    if(va>vb)return statSortDir;
+    return 0;
+  });
 }
 // Tarih girilince durumu otomatik "Okundu" yap
 function onDateInput(val){
@@ -1903,10 +1931,20 @@ function renderMemberStats(el,mid){
   html+='<div class="stitle">Yıl Özeti</div><div style="overflow-x:auto"><table class="yt"><thead><tr><th>Yıl</th><th>Kitap</th><th>Sayfa</th><th>Ort.</th></tr></thead><tbody>';
   yrs.forEach(function(y){var yb=rd.filter(function(b){return bY(b)==y;});var yp=yb.reduce(function(s,b){return s+(+b.pages||0);},0);html+='<tr><td>'+y+'</td><td>'+yb.length+'</td><td>'+yp.toLocaleString('tr-TR')+'</td><td>'+(yb.length?Math.round(yp/yb.length):'-')+'</td></tr>';});
   html+=(yrs.length?'':'<tr><td colspan="4" style="text-align:center;color:var(--td);padding:14px">Yıl bilgisi olan kitap yok</td></tr>')+'</tbody></table></div>';
-  // Okunan kitaplar listesi (EN ALTTA)
+  // Okunan kitaplar listesi (EN ALTTA) — filtre/sıralama kontrollü
   var ttl=statYear==='all'?'Tüm Okunanlar':statYear+' Yılında Okunanlar';
   html+='<div class="stitle">'+ttl+'</div>';
-  var sf=filt.slice().sort(function(a,b){return(b.pages||0)-(a.pages||0);});
+  html+='<div class="stat-sort-bar">'
+    +'<select id="statSortSelect">'
+    +'<option value="date"'+(statSortKey==='date'?' selected':'')+'>Okuma Tarihi</option>'
+    +'<option value="title"'+(statSortKey==='title'?' selected':'')+'>Kitap Adı</option>'
+    +'<option value="author"'+(statSortKey==='author'?' selected':'')+'>Yazar</option>'
+    +'<option value="pages"'+(statSortKey==='pages'?' selected':'')+'>Sayfa Sayısı</option>'
+    +'<option value="rating"'+(statSortKey==='rating'?' selected':'')+'>Puan</option>'
+    +'</select>'
+    +'<button type="button" id="statSortDirBtn" class="btn btn-s">'+(statSortDir===1?'↑ Artan':'↓ Azalan')+'</button>'
+    +'</div>';
+  var sf=sortStatBooks(filt.slice());
   html+=sf.length?sf.map(function(b,i){
     var ds=b.readDate||(b.year?String(b.year):'');
     return'<div class="bli"><div class="bln">'+(i<9?'0':'')+(i+1)+'</div>'
@@ -1917,6 +1955,10 @@ function renderMemberStats(el,mid){
   el.innerHTML=html;
   renderBarInEl(document.getElementById('mBchart'),yrs,rd,m.color);
   el.querySelectorAll('.yc').forEach(function(btn){btn.addEventListener('click',function(){statYear=btn.getAttribute('data-y');renderStats();});});
+  var ssSel=document.getElementById('statSortSelect');
+  if(ssSel)ssSel.addEventListener('change',function(){statSortKey=ssSel.value;renderStats();});
+  var ssDir=document.getElementById('statSortDirBtn');
+  if(ssDir)ssDir.addEventListener('click',function(){statSortDir*=-1;renderStats();});
   refreshCalendar(mid);
 }
 function renderFamilyStats(el){
