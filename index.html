@@ -2373,7 +2373,14 @@ async function doSyncPull(silent){
     if(r.status===401)throw new Error('Token geçersiz');
     if(!r.ok)throw new Error('GitHub API hatası: '+r.status);
     var data=await r.json();
-    var raw=data.files&&data.files['kutuphane.json']&&data.files['kutuphane.json'].content;
+    var gf=data.files&&data.files['kutuphane.json'];
+    var raw=gf&&gf.content;
+    // GitHub API ~1MB üstü dosyaları keser (truncated) — tam içeriği raw_url'den al
+    if(gf&&gf.truncated&&gf.raw_url){
+      var rr=await fetch(gf.raw_url,{signal:signal});
+      if(!rr.ok)throw new Error('Gist içeriği tam indirilemedi: '+rr.status);
+      raw=await rr.text();
+    }
     if(!raw)throw new Error('Gist içinde kutuphane.json bulunamadı');
     var remote=JSON.parse(raw);
     var local={members:members,books:books,goals:goals,deleted:getTombstones(),libName:settings.libName,theme:settings.theme};
@@ -2428,6 +2435,27 @@ renderMemberBar();renderBooks();renderSeries();
 setTimeout(drawIcon,200);
 initSyncUI();
 setupCoverUpload();
+// Eski (sıkıştırılmamış) büyük kapak resimlerini küçült — Gist boyutunu düşürür
+function shrinkOldCovers(){
+  var big=books.filter(function(b){return b.coverUrl&&b.coverUrl.indexOf('data:image')===0&&b.coverUrl.length>60000;});
+  if(!big.length)return;
+  Promise.all(big.map(function(b){
+    return new Promise(function(res){
+      var im=new Image();
+      im.onload=function(){
+        var w=im.width,h=im.height,mw=300;
+        if(w>mw){h=Math.round(h*(mw/w));w=mw;}
+        var c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(im,0,0,w,h);
+        try{b.coverUrl=c.toDataURL('image/jpeg',0.75);b.updatedAt=new Date().toISOString();}catch(e){}
+        res();
+      };
+      im.onerror=function(){res();};
+      im.src=b.coverUrl;
+    });
+  })).then(function(){persist();renderBooks();});
+}
+setTimeout(shrinkOldCovers,800);
 // Uygulama açılışında sync varsa otomatik çek (token olmasa da Gist ID varsa dene)
 if(getSyncGistId()){setTimeout(function(){doSyncPull(true);},1500);}
 
